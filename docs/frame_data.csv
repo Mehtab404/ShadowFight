@@ -9,3 +9,6 @@ KATANA_THRUST,Katana Mid Thrust,Katana,forward_weapon,13,4,16,33,+2,-4,30,Torso,
 KATANA_DRAW_SLASH,Katana Quick Draw,Katana,weapon,8,4,11,23,+5,+0,22,Torso,false,5
 NAGINATA_THRUST,Naginata Long Thrust,Naginata,forward_weapon,15,5,19,39,+3,-5,35,Torso,false,6
 NAGINATA_SPIN_SWEEP,Naginata Low Sweep,Naginata,down_weapon,14,6,20,40,Trip,-9,32,Legs,true,7
+KUSARIGAMA_CHAIN_WHIP,Chain Whip Thrust,Kusarigama,forward_weapon,14,5,17,36,+4,-4,34,Torso,false,7
+KUSARIGAMA_SICKLE_SLASH,Sickle Slash,Kusarigama,weapon,9,4,12,25,+3,-1,25,Head,false,5
+KUSARIGAMA_CHAIN_SWEEP,Low Chain Sweep,Kusarigama,down_weapon,12,6,18,36,Trip,-8,28,Legs,true,7

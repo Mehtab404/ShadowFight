@@ -163,3 +163,21 @@ theme_override_font_sizes/font_size = 46
 text = "ROUND 1"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="CombatFeedback" type="Control" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FeedbackLabel" type="Label" parent="Margin/CombatFeedback"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -160.0
+offset_top = 80.0
+offset_right = 160.0
+offset_bottom = 120.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 24
+text = "PARRY DEFLECT!"
+horizontal_alignment = 1

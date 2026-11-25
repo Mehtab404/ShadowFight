@@ -22,6 +22,8 @@ jobs:
       - name: Validate File Structure
         run: |
           test -f project.godot
+          test -f export_presets.cfg
+          test -f web/index.html
           test -f docs/GDD.md
           test -f docs/frame_data.csv
           test -d src/combat
@@ -29,4 +31,5 @@ jobs:
           test -d src/ai
           test -d src/ui
           test -d src/core
+          test -d src/vfx
           echo "All structural tests passed."

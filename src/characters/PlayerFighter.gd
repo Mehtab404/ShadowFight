@@ -56,13 +56,15 @@ func is_holding_block() -> bool:
 	return false
 
 func check_attack_inputs(airborne: bool = false) -> bool:
-	# Weapon Switch Hotkeys (1: Bare Hands, 2: Katana, 3: Naginata)
+	# Weapon Switch Hotkeys (1: Bare Hands, 2: Katana, 3: Naginata, 4: Kusarigama)
 	if Input.is_key_pressed(KEY_1):
 		equip_weapon(WeaponData.create_bare_hands())
 	elif Input.is_key_pressed(KEY_2):
 		equip_weapon(WeaponData.create_katana())
 	elif Input.is_key_pressed(KEY_3):
 		equip_weapon(WeaponData.create_naginata())
+	elif Input.is_key_pressed(KEY_4):
+		equip_weapon(WeaponData.create_kusarigama())
 
 	if airborne:
 		if Input.is_action_just_pressed(prefix + "kick"):
@@ -115,6 +117,44 @@ func check_attack_inputs(airborne: bool = false) -> bool:
 				"damage": 26.0,
 				"startup_f": 11, "active_f": 5, "recovery_f": 14,
 				"knockback": Vector2(210, -50),
+				"target_zone": DamageCalculator.HitZone.HEAD,
+				"is_knockdown": false
+			})
+			return true
+	elif current_weapon != null and current_weapon.weapon_type == WeaponData.WeaponType.KUSARIGAMA:
+		# Kusarigama Sickle & Chain Moves
+		if down_held and Input.is_action_just_pressed(prefix + "weapon"):
+			AudioManager.play_chain_rattle()
+			_start_attack({
+				"anim": "kusarigama_sweep",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 28.0,
+				"startup_f": 12, "active_f": 6, "recovery_f": 18,
+				"knockback": Vector2(230, -90),
+				"target_zone": DamageCalculator.HitZone.LEGS,
+				"is_knockdown": true
+			})
+			return true
+		if forward_held and Input.is_action_just_pressed(prefix + "weapon"):
+			AudioManager.play_chain_rattle()
+			_start_attack({
+				"anim": "kusarigama_chain_thrust",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 34.0,
+				"startup_f": 14, "active_f": 5, "recovery_f": 17,
+				"knockback": Vector2(240, -40),
+				"target_zone": DamageCalculator.HitZone.TORSO,
+				"is_knockdown": false
+			})
+			return true
+		if Input.is_action_just_pressed(prefix + "weapon"):
+			AudioManager.play_blade_slash()
+			_start_attack({
+				"anim": "kusarigama_slash",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 25.0,
+				"startup_f": 9, "active_f": 4, "recovery_f": 12,
+				"knockback": Vector2(170, -30),
 				"target_zone": DamageCalculator.HitZone.HEAD,
 				"is_knockdown": false
 			})

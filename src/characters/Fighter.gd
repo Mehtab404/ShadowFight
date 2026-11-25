@@ -3,6 +3,7 @@ extends CharacterBody2D
 
 signal health_changed(current: float, max_val: float)
 signal hit_taken_event(damage: float, zone: DamageCalculator.HitZone, is_blocked: bool)
+signal parry_performed()
 signal defeated()
 signal combo_updated(count: int)
 
@@ -21,6 +22,8 @@ var current_weapon: WeaponData = null
 var time_alive: float = 0.0
 var base_torso_pos_y: float = -64.0
 var base_head_pos_y: float = -100.0
+var guard_start_time: float = -1.0
+var was_guarding_last_frame: bool = false
 
 @onready var state_machine: StateMachine = $StateMachine
 @onready var visual_root: Node2D = $VisualRoot
@@ -54,8 +57,18 @@ func equip_weapon(weapon: WeaponData) -> void:
 			katana_blade.points = PackedVector2Array([Vector2(-15, 10), Vector2(35, -25), Vector2(85, -60)])
 			katana_blade.default_color = weapon.weapon_color
 			katana_blade.width = 5.0
+		elif weapon.weapon_type == WeaponData.WeaponType.KUSARIGAMA:
+			katana_blade.visible = true
+			katana_blade.points = PackedVector2Array([Vector2(0, 0), Vector2(25, -15), Vector2(60, -25), Vector2(85, -55), Vector2(100, -45)])
+			katana_blade.default_color = weapon.weapon_color
+			katana_blade.width = 3.5
 
 func _physics_process(delta: float) -> void:
+	var currently_guarding = is_holding_block()
+	if currently_guarding and not was_guarding_last_frame:
+		guard_start_time = float(Time.get_ticks_msec()) / 1000.0
+	was_guarding_last_frame = currently_guarding
+
 	if combo_count > 0:
 		combo_timer -= delta
 		if combo_timer <= 0.0:
@@ -145,6 +158,27 @@ func take_hit(hitbox: Hitbox, zone: DamageCalculator.HitZone) -> void:
 	var is_blocked = is_holding_block() and not hitbox.is_unblockable
 	
 	if is_blocked:
+		var guard_elapsed = float(Time.get_ticks_msec()) / 1000.0 - guard_start_time
+		var is_parry = guard_elapsed >= 0.0 and guard_elapsed <= 0.14
+		
+		if is_parry:
+			# JUST-FRAME PARRY DEFLECTION: Zero chip damage, attacker staggered, defender advantage!
+			AudioManager.play_parry_deflect()
+			if get_parent() != null:
+				HitSparks.spawn_at(get_parent(), global_position + Vector2(0, -60), true)
+			HitstopManager.trigger_hitstop(8, 12.0)
+			parry_performed.emit()
+			
+			if hitbox.attacker != null and hitbox.attacker is Fighter:
+				var att = hitbox.attacker
+				if att.state_machine != null:
+					att.state_machine.change_state("hitstun", {
+						"duration": 0.45,
+						"knockback": Vector2(-180.0 * attacker_facing, 0.0),
+						"zone": DamageCalculator.HitZone.TORSO
+					})
+			return
+
 		var chip_damage = maxf(1.0, hitbox.base_damage * 0.15)
 		health -= chip_damage
 		health_changed.emit(health, max_health)

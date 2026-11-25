@@ -2,12 +2,13 @@ class_name WeaponData
 extends Resource
 
 ## Data definition for weapons in Shadow Ronin
-## Covers Bare Hands, Katana, and Naginata with distinct ranges and frame data
+## Covers Bare Hands, Katana, Naginata, and Kusarigama
 
 enum WeaponType {
 	BARE_HANDS,
 	KATANA,
-	NAGINATA
+	NAGINATA,
+	KUSARIGAMA
 }
 
 @export var weapon_type: WeaponType = WeaponType.KATANA
@@ -49,4 +50,15 @@ static func create_naginata() -> WeaponData:
 	w.speed_scale = 0.82
 	w.weapon_color = Color(0.85, 0.6, 0.3, 1.0)
 	w.trail_color = Color(0.9, 0.3, 0.2, 0.85)
+	return w
+
+static func create_kusarigama() -> WeaponData:
+	var w = WeaponData.new()
+	w.weapon_type = WeaponType.KUSARIGAMA
+	w.weapon_name = "Kusarigama"
+	w.base_damage_mult = 1.25
+	w.reach = 210.0
+	w.speed_scale = 0.88
+	w.weapon_color = Color(0.68, 0.72, 0.82, 1.0)
+	w.trail_color = Color(0.4, 0.8, 1.0, 0.85)
 	return w

@@ -15,6 +15,7 @@ extends CanvasLayer
 
 @onready var combo_label: Label = $Margin/ComboBanner/ComboLabel
 @onready var announcement_label: Label = $Margin/Announcement/BigLabel
+@onready var feedback_label: Label = $Margin/CombatFeedback/FeedbackLabel
 
 var p1_ref: Fighter = null
 var p2_ref: Fighter = null
@@ -22,6 +23,8 @@ var p2_ref: Fighter = null
 func _ready() -> void:
 	announcement_label.text = ""
 	combo_label.text = ""
+	if feedback_label != null:
+		feedback_label.text = ""
 	GameManager.timer_updated.connect(_on_timer_updated)
 	GameManager.round_started.connect(_on_round_started)
 	GameManager.round_ended.connect(_on_round_ended)
@@ -39,6 +42,30 @@ func setup(p1: Fighter, p2: Fighter) -> void:
 	
 	p1.combo_updated.connect(func(c): _on_combo_updated(p1, c))
 	p2.combo_updated.connect(func(c): _on_combo_updated(p2, c))
+	
+	p1.parry_performed.connect(func(): _show_feedback("PARRY DEFLECT!", Color(0.2, 0.9, 1.0)))
+	p2.parry_performed.connect(func(): _show_feedback("ENEMY PARRY!", Color(1.0, 0.3, 0.3)))
+	
+	p1.hit_taken_event.connect(func(_d, z, b): _on_fighter_hit_feedback(p1, z, b))
+	p2.hit_taken_event.connect(func(_d, z, b): _on_fighter_hit_feedback(p2, z, b))
+
+func _on_fighter_hit_feedback(_target: Fighter, zone: DamageCalculator.HitZone, is_blocked: bool) -> void:
+	if is_blocked:
+		return
+	if zone == DamageCalculator.HitZone.HEAD:
+		_show_feedback("CRITICAL HEAD HIT!", Color(1.0, 0.85, 0.2))
+
+func _show_feedback(txt: String, col: Color) -> void:
+	if feedback_label == null:
+		return
+	feedback_label.text = txt
+	feedback_label.modulate = col
+	feedback_label.scale = Vector2(1.3, 1.3)
+	var tween = create_tween().set_parallel(true)
+	tween.tween_property(feedback_label, "scale", Vector2(1.0, 1.0), 0.15)
+	await get_tree().create_timer(0.6).timeout
+	var fade = create_tween()
+	fade.tween_property(feedback_label, "modulate:a", 0.0, 0.25)
 
 func _on_p1_health_changed(current: float, max_val: float) -> void:
 	var target_val = (current / max_val) * 100.0
@@ -69,19 +96,41 @@ func _on_combo_updated(fighter: Fighter, count: int) -> void:
 		combo_label.text = ""
 
 func _on_round_started(round_num: int) -> void:
+	_update_win_markers()
 	_show_announcement("ROUND %d" % round_num)
 	await get_tree().create_timer(1.0).timeout
 	_show_announcement("FIGHT!")
 
 func _on_round_ended(winner: Node) -> void:
+	_update_win_markers()
 	if winner != null and winner is Fighter:
 		_show_announcement("K.O.!\n%s WINS ROUND" % winner.fighter_name.to_upper())
 	else:
 		_show_announcement("TIME UP!\nDRAW")
 
 func _on_match_ended(champion: Node) -> void:
+	_update_win_markers()
 	if champion != null and champion is Fighter:
 		_show_announcement("VICTORY!\n%s IS THE SHADOW RONIN" % champion.fighter_name.to_upper())
+
+func _update_win_markers() -> void:
+	# Refresh round win tokens
+	for c in round_p1_wins.get_children():
+		c.queue_free()
+	for c in round_p2_wins.get_children():
+		c.queue_free()
+		
+	for i in range(GameManager.p1_round_wins):
+		var token = Label.new()
+		token.text = "🔴"
+		token.theme_override_font_sizes.font_size = 14
+		round_p1_wins.add_child(token)
+		
+	for i in range(GameManager.p2_round_wins):
+		var token = Label.new()
+		token.text = "🔴"
+		token.theme_override_font_sizes.font_size = 14
+		round_p2_wins.add_child(token)
 
 func _show_announcement(txt: String) -> void:
 	announcement_label.text = txt

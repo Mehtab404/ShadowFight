@@ -170,9 +170,28 @@
       <div id="combo-badge">3 HITS!</div>
       <div id="announcement">ROUND 1</div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; color:#64748b; font-size:12px;">
-        <div>SHADOW FIGHT 2 PHYSICS COMBAT ENGINE</div>
-        <div>PRESS <span class="key-badge">1</span> BARE HANDS | <span class="key-badge">2</span> KATANA | <span class="key-badge">3</span> NAGINATA</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; color:#94a3b8; font-size:12px; pointer-events:auto;">
+        <div style="display:flex; gap:10px;">
+          <button id="stage-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">⛩️ STAGE: DOJO</button>
+          <button id="bgm-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">🎵 BGM: ON</button>
+        </div>
+        <div>PRESS <span class="key-badge">1</span> BARE | <span class="key-badge">2</span> KATANA | <span class="key-badge">3</span> NAGINATA | <span class="key-badge">4</span> KUSARIGAMA</div>
+      </div>
+    </div>
+
+    <!-- On-screen touch controls for mobile/tablets -->
+    <div id="touch-controls" style="position:absolute; bottom:25px; width:100%; display:flex; justify-content:space-between; padding:0 30px; pointer-events:none;">
+      <div style="display:flex; gap:8px; pointer-events:auto;">
+        <button id="btn-left" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">◀</button>
+        <button id="btn-right" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">▶</button>
+        <button id="btn-up" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">▲</button>
+        <button id="btn-down" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">▼</button>
+      </div>
+      <div style="display:flex; gap:8px; pointer-events:auto;">
+        <button id="btn-punch" class="touch-btn" style="width:48px; height:48px; background:rgba(220,38,38,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">JAB</button>
+        <button id="btn-kick" class="touch-btn" style="width:48px; height:48px; background:rgba(234,88,12,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">KICK</button>
+        <button id="btn-weapon" class="touch-btn" style="width:48px; height:48px; background:rgba(59,130,246,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">SLASH</button>
+        <button id="btn-block" class="touch-btn" style="width:48px; height:48px; background:rgba(16,185,129,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">GUARD</button>
       </div>
     </div>
   </div>
@@ -222,8 +241,36 @@
       punch: () => playSynthSound(110, 0.18, 'sine', -70),
       kick: () => playSynthSound(85, 0.22, 'sine', -55),
       block: () => playSynthSound(680, 0.09, 'square', -400),
+      parry: () => playSynthSound(880, 0.35, 'sine', -120),
+      chain: () => playSynthSound(750, 0.14, 'square', -500),
       knockdown: () => playSynthSound(70, 0.45, 'triangle', -45),
+      taiko: (f = 55) => playSynthSound(f, 0.28, 'sine', -25),
+      shamisen: (f = 293) => playSynthSound(f, 0.22, 'triangle', -30)
     };
+
+    // Traditional Japanese Hirajoshi Pentatonic Scale
+    const HIRAJOSHI = [146.83, 155.56, 196.00, 220.00, 233.08, 293.66, 311.13, 392.00, 440.00];
+    let bgmStep = 0;
+    let bgmEnabled = true;
+    setInterval(() => {
+      if (!bgmEnabled || !audioCtx) return;
+      bgmStep = (bgmStep + 1) % 16;
+      if (bgmStep === 0) SFX.taiko(55);
+      else if (bgmStep === 4 || bgmStep === 10) SFX.taiko(85);
+      else if (bgmStep === 6 || bgmStep === 8 || bgmStep === 14) SFX.taiko(190);
+      if (bgmStep % 2 === 0) {
+        const note = HIRAJOSHI[(bgmStep * 3) % HIRAJOSHI.length];
+        SFX.shamisen(note);
+      }
+    }, 220);
+
+    // Stage Themes
+    let currentStage = 0; // 0: Dojo, 1: Bamboo, 2: Burning Temple
+    const STAGE_CONFIGS = [
+      { name: "DOJO (TWILIGHT)", skyTop: "#100a1c", skyBot: "#24101e", moon: "#b91c1c", leafCol: "rgba(244, 114, 182, 0.6)", leafVy: 1.3 },
+      { name: "BAMBOO FOREST", skyTop: "#050914", skyBot: "#0c1526", moon: "#e0e7ff", leafCol: "rgba(74, 222, 128, 0.55)", leafVy: 1.1 },
+      { name: "BURNING TEMPLE", skyTop: "#2b0a08", skyBot: "#451208", moon: "#ea580c", leafCol: "rgba(251, 146, 60, 0.85)", leafVy: -1.4 }
+    ];
 
     // --- GAME ENGINE SETUP ---
     const canvas = document.getElementById('gameCanvas');
@@ -254,9 +301,44 @@
       if (e.key === '1') p1.setWeapon('bare');
       if (e.key === '2') p1.setWeapon('katana');
       if (e.key === '3') p1.setWeapon('naginata');
+      if (e.key === '4') p1.setWeapon('kusarigama');
       if (e.key === 'r' || e.key === 'R') resetMatch();
     });
     window.addEventListener('keyup', e => KEYS[e.key.toLowerCase()] = false);
+
+    // Stage toggle button listener
+    document.getElementById('stage-toggle-btn').addEventListener('click', () => {
+      currentStage = (currentStage + 1) % STAGE_CONFIGS.length;
+      document.getElementById('stage-toggle-btn').innerText = `⛩️ STAGE: ${STAGE_CONFIGS[currentStage].name}`;
+      SFX.whoosh();
+    });
+
+    // BGM toggle listener
+    document.getElementById('bgm-toggle-btn').addEventListener('click', () => {
+      bgmEnabled = !bgmEnabled;
+      document.getElementById('bgm-toggle-btn').innerText = `🎵 BGM: ${bgmEnabled ? 'ON' : 'OFF'}`;
+      if (bgmEnabled) initAudio();
+    });
+
+    // Mobile Virtual Touch controls binding
+    const bindTouch = (id, key) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const onDown = (e) => { e.preventDefault(); initAudio(); KEYS[key] = true; };
+      const onUp = (e) => { e.preventDefault(); KEYS[key] = false; };
+      btn.addEventListener('touchstart', onDown, { passive: false });
+      btn.addEventListener('touchend', onUp, { passive: false });
+      btn.addEventListener('mousedown', onDown);
+      btn.addEventListener('mouseup', onUp);
+    };
+    bindTouch('btn-left', 'a');
+    bindTouch('btn-right', 'd');
+    bindTouch('btn-up', 'w');
+    bindTouch('btn-down', 's');
+    bindTouch('btn-punch', 'j');
+    bindTouch('btn-kick', 'k');
+    bindTouch('btn-weapon', 'l');
+    bindTouch('btn-block', 'i');
 
     // --- DAMAGE FORMULA ---
     // D_final = D_base * M_zone * max(0.3, 1 - 0.1*(C - 1))
@@ -530,16 +612,16 @@
       }
 
       getMoveData(type) {
-        const weaponMult = (this.weapon === 'naginata') ? 1.3 : (this.weapon === 'bare' ? 0.85 : 1.15);
+        const weaponMult = (this.weapon === 'naginata' || this.weapon === 'kusarigama') ? 1.3 : (this.weapon === 'bare' ? 0.85 : 1.15);
         const moves = {
           jab: { name: 'Quick Jab', base: 12, startup: 6, active: 3, recovery: 8, zone: 'head', reach: 65, knock: 3, sfx: 'punch' },
           straight: { name: 'Straight Punch', base: 18, startup: 9, active: 4, recovery: 12, zone: 'torso', reach: 80, knock: 5, sfx: 'punch' },
           low_kick: { name: 'Low Kick', base: 14, startup: 7, active: 3, recovery: 10, zone: 'legs', reach: 75, knock: 4, sfx: 'kick' },
           roundhouse: { name: 'Roundhouse Kick', base: 28, startup: 12, active: 5, recovery: 14, zone: 'head', reach: 95, knock: 10, knockdown: true, sfx: 'kick' },
           sweep: { name: 'Low Sweep', base: 20, startup: 10, active: 4, recovery: 15, zone: 'legs', reach: 85, knock: 8, knockdown: true, sfx: 'kick' },
-          slash: { name: 'Katana Slash', base: 24 * weaponMult, startup: 8, active: 4, recovery: 11, zone: 'torso', reach: (this.weapon === 'naginata' ? 140 : 105), knock: 6, sfx: 'slash' },
-          thrust: { name: 'Mid Thrust', base: 30 * weaponMult, startup: 13, active: 4, recovery: 16, zone: 'torso', reach: (this.weapon === 'naginata' ? 165 : 120), knock: 8, sfx: 'slash' },
-          overhead: { name: 'Overhead Slash', base: 42 * weaponMult, startup: 16, active: 6, recovery: 18, zone: 'head', reach: (this.weapon === 'naginata' ? 150 : 110), knock: 12, knockdown: true, sfx: 'slash' }
+          slash: { name: (this.weapon === 'kusarigama' ? 'Sickle Slash' : 'Katana Slash'), base: 24 * weaponMult, startup: 8, active: 4, recovery: 11, zone: 'torso', reach: (this.weapon === 'naginata' ? 140 : (this.weapon === 'kusarigama' ? 120 : 105)), knock: 6, sfx: (this.weapon === 'kusarigama' ? 'chain' : 'slash') },
+          thrust: { name: (this.weapon === 'kusarigama' ? 'Chain Whip Thrust' : 'Mid Thrust'), base: 32 * weaponMult, startup: 13, active: 5, recovery: 16, zone: 'torso', reach: (this.weapon === 'naginata' ? 165 : (this.weapon === 'kusarigama' ? 210 : 120)), knock: 8, sfx: (this.weapon === 'kusarigama' ? 'chain' : 'slash') },
+          overhead: { name: (this.weapon === 'kusarigama' ? 'Chain High Strike' : 'Overhead Slash'), base: 42 * weaponMult, startup: 16, active: 6, recovery: 18, zone: 'head', reach: (this.weapon === 'naginata' ? 150 : (this.weapon === 'kusarigama' ? 190 : 110)), knock: 12, knockdown: true, sfx: 'slash' }
         };
         return moves[type] || moves.jab;
       }
@@ -606,16 +688,23 @@
       }
 
       isHoldingBlock(attacker) {
+        let isGuarding = false;
         if (!this.isAI) {
-          if (KEYS['i']) return true;
+          if (KEYS['i']) isGuarding = true;
           const left = KEYS['a'] || KEYS['arrowleft'];
           const right = KEYS['d'] || KEYS['arrowright'];
-          if (this.facing === 1 && left) return true;
-          if (this.facing === -1 && right) return true;
-          return false;
+          if (this.facing === 1 && left) isGuarding = true;
+          if (this.facing === -1 && right) isGuarding = true;
         } else {
-          return (this.facing === 1 && this.vx < 0) || (this.facing === -1 && this.vx > 0);
+          isGuarding = (this.facing === 1 && this.vx < 0) || (this.facing === -1 && this.vx > 0);
         }
+
+        if (isGuarding) {
+          if (!this.guardStartTime) this.guardStartTime = Date.now();
+        } else {
+          this.guardStartTime = 0;
+        }
+        return isGuarding;
       }
 
       receiveHit(attacker, move) {
@@ -626,6 +715,22 @@
         const hitY = this.y - (move.zone === 'head' ? 95 : (move.zone === 'legs' ? 25 : 60));
 
         if (isBlocked) {
+          const guardElapsed = Date.now() - (this.guardStartTime || 0);
+          const isParry = guardElapsed >= 0 && guardElapsed <= 130;
+
+          if (isParry) {
+            // JUST-FRAME PARRY DEFLECTION!
+            SFX.parry();
+            spawnSparks(hitX, hitY, 30, '#38bdf8');
+            announce("PARRY DEFLECT!", 900);
+            triggerHitstop(8);
+            attacker.state = 'hitstun';
+            attacker.stateTimer = 26;
+            attacker.vx = -attacker.facing * 4.5;
+            return;
+          }
+
+          // Regular Block
           SFX.block();
           spawnSparks(hitX, hitY, 12, '#38bdf8');
           const chip = Math.max(1, Math.round(move.base * 0.15));
@@ -636,6 +741,7 @@
           triggerHitstop(3);
           updateHealthUI();
           return;
+        }
         }
 
         // Clean Hit
@@ -813,20 +919,43 @@
 
           // Weapon blade
           if (this.weapon !== 'bare') {
-            const bladeLen = (this.weapon === 'naginata') ? 85 : 55;
-            ctx.strokeStyle = (this.weapon === 'naginata' ? '#f59e0b' : '#e2e8f0');
-            ctx.lineWidth = (this.weapon === 'naginata' ? 5 : 4);
-            ctx.beginPath();
-            ctx.moveTo(reachX, reachY);
-            ctx.lineTo(reachX + bladeLen, reachY - 12);
-            ctx.stroke();
+            if (this.weapon === 'kusarigama') {
+              // Sickle & Chain
+              ctx.strokeStyle = '#94a3b8';
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(reachX, reachY);
+              ctx.lineTo(reachX + 25, reachY - 15);
+              ctx.lineTo(reachX + 38, reachY - 8); // Curved sickle head
+              ctx.stroke();
+
+              // Trailing chain links
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(reachX, reachY);
+              const chainLen = (this.attackPhase === 'active') ? 95 : 30;
+              for (let c = 0; c < chainLen; c += 12) {
+                const cy = reachY + Math.sin(c * 0.3 + Date.now() * 0.02) * 6;
+                ctx.lineTo(reachX + c, cy);
+              }
+              ctx.stroke();
+            } else {
+              const bladeLen = (this.weapon === 'naginata') ? 85 : 55;
+              ctx.strokeStyle = (this.weapon === 'naginata' ? '#f59e0b' : '#e2e8f0');
+              ctx.lineWidth = (this.weapon === 'naginata' ? 5 : 4);
+              ctx.beginPath();
+              ctx.moveTo(reachX, reachY);
+              ctx.lineTo(reachX + bladeLen, reachY - 12);
+              ctx.stroke();
+            }
 
             // Dynamic slash arc trail
             if (this.attackPhase === 'active') {
-              ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+              ctx.strokeStyle = (this.weapon === 'kusarigama' ? 'rgba(56, 189, 248, 0.45)' : 'rgba(251, 191, 36, 0.45)');
               ctx.lineWidth = 18;
               ctx.beginPath();
-              ctx.arc(reachX - 20, reachY, bladeLen, -0.42, 0.42);
+              ctx.arc(reachX - 20, reachY, (this.weapon === 'naginata' ? 85 : (this.weapon === 'kusarigama' ? 95 : 55)), -0.42, 0.42);
               ctx.stroke();
             }
           }
@@ -951,10 +1080,16 @@
         p.life -= p.decay;
         if (p.life <= 0) particles.splice(i, 1);
       }
+      const stageCfg = STAGE_CONFIGS[currentStage];
       for (const l of leaves) {
-        l.x += l.vx; l.y += l.vy;
+        l.x += l.vx;
+        l.y += stageCfg.leafVy;
         l.rot += l.vrot;
-        if (l.y > HEIGHT) { l.y = -10; l.x = Math.random() * WIDTH; }
+        if (stageCfg.leafVy < 0) {
+          if (l.y < -10) { l.y = HEIGHT + 10; l.x = Math.random() * WIDTH; }
+        } else {
+          if (l.y > HEIGHT) { l.y = -10; l.x = Math.random() * WIDTH; }
+        }
         if (l.x > WIDTH) l.x = 0;
       }
 
@@ -963,16 +1098,16 @@
 
       // Sky Gradient
       const skyGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-      skyGrad.addColorStop(0, '#100a1c');
-      skyGrad.addColorStop(0.7, '#24101e');
-      skyGrad.addColorStop(1, '#0b0811');
+      skyGrad.addColorStop(0, stageCfg.skyTop);
+      skyGrad.addColorStop(0.7, stageCfg.skyBot);
+      skyGrad.addColorStop(1, '#050408');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-      // Giant Blood Red Moon
-      ctx.fillStyle = '#b91c1c';
-      ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 40;
+      // Celestial Moon / Sun
+      ctx.fillStyle = stageCfg.moon;
+      ctx.shadowColor = stageCfg.moon;
+      ctx.shadowBlur = 45;
       ctx.beginPath();
       ctx.arc(WIDTH * 0.5, 210, 85, 0, Math.PI * 2);
       ctx.fill();
@@ -1008,7 +1143,7 @@
       ctx.stroke();
 
       // 3. RENDER ATMOSPHERIC LEAVES
-      ctx.fillStyle = 'rgba(244, 114, 182, 0.6)';
+      ctx.fillStyle = stageCfg.leafCol;
       for (const l of leaves) {
         ctx.save();
         ctx.translate(l.x, l.y);

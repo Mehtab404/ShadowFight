@@ -19,6 +19,7 @@ enum MatchState {
 
 @export var round_time_limit: int = 99
 @export var rounds_to_win: int = 2
+@export var selected_stage: int = 0 # 0: Twilight Dojo, 1: Bamboo Forest, 2: Burning Temple
 
 var current_state: MatchState = MatchState.INITIALIZING
 var current_round: int = 1
