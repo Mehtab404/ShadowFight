@@ -1,0 +1,32 @@
+name: Shadow Ronin CI
+
+on:
+  push:
+    branches: [ main, feat/* ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Validate Git LFS tracking
+        run: |
+          git lfs status
+
+      - name: Validate File Structure
+        run: |
+          test -f project.godot
+          test -f docs/GDD.md
+          test -f docs/frame_data.csv
+          test -d src/combat
+          test -d src/characters
+          test -d src/ai
+          test -d src/ui
+          test -d src/core
+          echo "All structural tests passed."

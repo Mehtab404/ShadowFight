@@ -1,0 +1,165 @@
+[gd_scene load_steps=6 format=3 uid="uid://ci74m6c35k70a"]
+
+[ext_resource type="Script" path="res://src/ui/HUD.gd" id="1_hud_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
+bg_color = Color(0.12, 0.12, 0.16, 0.85)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p1_fill"]
+bg_color = Color(0.18, 0.82, 0.36, 1)
+corner_radius_top_left = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_damage_trail"]
+bg_color = Color(0.95, 0.72, 0.15, 0.9)
+corner_radius_top_left = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p2_fill"]
+bg_color = Color(0.9, 0.24, 0.24, 1)
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud_script")
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 24
+
+[node name="TopBar" type="HBoxContainer" parent="Margin"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="P1Container" type="VBoxContainer" parent="Margin/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="P1Name" type="Label" parent="Margin/TopBar/P1Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "SHADOW RONIN"
+
+[node name="P1HealthBar" type="ProgressBar" parent="Margin/TopBar/P1Container"]
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_p1_fill")
+value = 100.0
+show_percentage = false
+
+[node name="DamageTrail" type="ProgressBar" parent="Margin/TopBar/P1Container/P1HealthBar"]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_damage_trail")
+value = 100.0
+show_percentage = false
+
+[node name="WinMarkers" type="HBoxContainer" parent="Margin/TopBar/P1Container"]
+layout_mode = 2
+
+[node name="TimerCenter" type="VBoxContainer" parent="Margin/TopBar"]
+custom_minimum_size = Vector2(90, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="TimerLabel" type="Label" parent="Margin/TopBar/TimerCenter"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 38
+text = "99"
+horizontal_alignment = 1
+
+[node name="P2Container" type="VBoxContainer" parent="Margin/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="P2Name" type="Label" parent="Margin/TopBar/P2Container"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "SHADOW BOT"
+horizontal_alignment = 2
+
+[node name="P2HealthBar" type="ProgressBar" parent="Margin/TopBar/P2Container"]
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_p2_fill")
+value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="DamageTrail" type="ProgressBar" parent="Margin/TopBar/P2Container/P2HealthBar"]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_damage_trail")
+value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="WinMarkers" type="HBoxContainer" parent="Margin/TopBar/P2Container"]
+layout_mode = 2
+alignment = 2
+
+[node name="ComboBanner" type="Control" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ComboLabel" type="Label" parent="Margin/ComboBanner"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 110.0
+offset_right = 240.0
+offset_bottom = 180.0
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 28
+text = "3 HITS!"
+
+[node name="Announcement" type="Control" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="BigLabel" type="Label" parent="Margin/Announcement"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -60.0
+offset_right = 250.0
+offset_bottom = 60.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
+theme_override_constants/shadow_offset_x = 3
+theme_override_constants/shadow_offset_y = 3
+theme_override_font_sizes/font_size = 46
+text = "ROUND 1"
+horizontal_alignment = 1
+vertical_alignment = 1

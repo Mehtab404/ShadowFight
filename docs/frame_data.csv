@@ -1,0 +1,11 @@
+move_id,move_name,weapon,input,startup_f,active_f,recovery_f,total_f,on_hit,on_block,damage,hit_zone,knockdown,hitstop_f
+PUNCH_JAB,Quick Jab,Bare Hands,punch,6,3,8,17,+4,+1,12,Head,false,4
+PUNCH_STRAIGHT,Straight Punch,Bare Hands,forward_punch,9,4,12,25,+2,-2,18,Torso,false,5
+KICK_LOW,Low Shin Kick,Bare Hands,down_kick,7,3,10,20,+3,-1,14,Legs,false,4
+KICK_ROUNDHOUSE,Roundhouse Kick,Bare Hands,forward_kick,12,5,14,31,Knockdown,-6,28,Head,true,7
+KICK_SWEEP,Low Sweep,Bare Hands,down_forward_kick,10,4,15,29,Trip,-10,20,Legs,true,6
+KATANA_OVERHEAD,Katana Overhead Slash,Katana,up_weapon,16,6,18,40,Heavy Stagger,-8,42,Head,true,8
+KATANA_THRUST,Katana Mid Thrust,Katana,forward_weapon,13,4,16,33,+2,-4,30,Torso,false,6
+KATANA_DRAW_SLASH,Katana Quick Draw,Katana,weapon,8,4,11,23,+5,+0,22,Torso,false,5
+NAGINATA_THRUST,Naginata Long Thrust,Naginata,forward_weapon,15,5,19,39,+3,-5,35,Torso,false,6
+NAGINATA_SPIN_SWEEP,Naginata Low Sweep,Naginata,down_weapon,14,6,20,40,Trip,-9,32,Legs,true,7

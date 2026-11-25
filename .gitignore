@@ -1,0 +1,11 @@
+# Godot 4 ignores
+.godot/
+*.translation
+
+# OS & IDE ignores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
+*.log

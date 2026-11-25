@@ -1,0 +1,193 @@
+[gd_scene load_steps=22 format=3 uid="uid://c83k9b2s7w8xy"]
+
+[ext_resource type="Script" path="res://src/characters/Fighter.gd" id="1_fighter"]
+[ext_resource type="Script" path="res://src/combat/Hurtbox.gd" id="2_hurtbox"]
+[ext_resource type="Script" path="res://src/combat/Hitbox.gd" id="3_hitbox"]
+[ext_resource type="Script" path="res://src/characters/fsm/StateMachine.gd" id="4_fsm"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/IdleState.gd" id="5_idle"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/MoveState.gd" id="6_move"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/JumpState.gd" id="7_jump"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/CrouchState.gd" id="8_crouch"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/AttackState.gd" id="9_attack"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/HitStunState.gd" id="10_hitstun"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/BlockStunState.gd" id="11_blockstun"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/KnockdownState.gd" id="12_knockdown"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/GetUpState.gd" id="13_getup"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_pushbox"]
+radius = 22.0
+height = 124.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_head"]
+radius = 16.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_torso"]
+size = Vector2(36.0, 48.0)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_legs"]
+size = Vector2(32.0, 52.0)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_punch"]
+radius = 18.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kick"]
+size = Vector2(44.0, 24.0)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_weapon"]
+size = Vector2(72.0, 28.0)
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_moves"]
+
+[node name="Fighter" type="CharacterBody2D"]
+collision_layer = 1
+collision_mask = 33
+script = ExtResource("1_fighter")
+
+[node name="PushboxShape" type="CollisionShape2D" parent="."]
+position = Vector2(0, -62)
+shape = SubResource("CapsuleShape2D_pushbox")
+
+[node name="VisualRoot" type="Node2D" parent="."]
+
+[node name="Torso" type="Polygon2D" parent="VisualRoot"]
+color = Color(0.05, 0.05, 0.07, 1)
+polygon = PackedVector2Array(-14, -86, 14, -86, 12, -42, -12, -42)
+
+[node name="Head" type="Polygon2D" parent="VisualRoot"]
+position = Vector2(0, -100)
+color = Color(0.05, 0.05, 0.07, 1)
+polygon = PackedVector2Array(-11, -11, 11, -11, 13, 5, 0, 14, -13, 5)
+
+[node name="ArmBack" type="Line2D" parent="VisualRoot"]
+points = PackedVector2Array(-6, -78, -18, -60, -14, -40)
+width = 8.0
+default_color = Color(0.08, 0.08, 0.1, 1)
+
+[node name="ArmFront" type="Line2D" parent="VisualRoot"]
+points = PackedVector2Array(6, -78, 16, -60, 22, -44)
+width = 9.0
+default_color = Color(0.03, 0.03, 0.05, 1)
+
+[node name="LegBack" type="Line2D" parent="VisualRoot"]
+points = PackedVector2Array(-8, -42, -14, -22, -10, 0)
+width = 10.0
+default_color = Color(0.07, 0.07, 0.09, 1)
+
+[node name="LegFront" type="Line2D" parent="VisualRoot"]
+points = PackedVector2Array(8, -42, 14, -22, 12, 0)
+width = 11.0
+default_color = Color(0.03, 0.03, 0.05, 1)
+
+[node name="KatanaBlade" type="Line2D" parent="VisualRoot"]
+position = Vector2(22, -44)
+points = PackedVector2Array(0, 0, 28, -24, 52, -44)
+width = 4.0
+default_color = Color(0.75, 0.78, 0.85, 1)
+
+[node name="HurtboxHead" type="Area2D" parent="VisualRoot"]
+position = Vector2(0, -100)
+collision_layer = 2
+collision_mask = 20
+script = ExtResource("2_hurtbox")
+zone = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="VisualRoot/HurtboxHead"]
+shape = SubResource("CircleShape2D_head")
+
+[node name="HurtboxTorso" type="Area2D" parent="VisualRoot"]
+position = Vector2(0, -64)
+collision_layer = 2
+collision_mask = 20
+script = ExtResource("2_hurtbox")
+zone = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="VisualRoot/HurtboxTorso"]
+shape = SubResource("RectangleShape2D_torso")
+
+[node name="HurtboxLegs" type="Area2D" parent="VisualRoot"]
+position = Vector2(0, -26)
+collision_layer = 2
+collision_mask = 20
+script = ExtResource("2_hurtbox")
+zone = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="VisualRoot/HurtboxLegs"]
+shape = SubResource("RectangleShape2D_legs")
+
+[node name="PunchHitbox" type="Area2D" parent="VisualRoot"]
+position = Vector2(36, -74)
+collision_layer = 4
+collision_mask = 10
+monitoring = false
+monitorable = false
+script = ExtResource("3_hitbox")
+base_damage = 12.0
+target_zone = 0
+knockback = Vector2(140, -30)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="VisualRoot/PunchHitbox"]
+shape = SubResource("CircleShape2D_punch")
+
+[node name="KickHitbox" type="Area2D" parent="VisualRoot"]
+position = Vector2(40, -38)
+collision_layer = 4
+collision_mask = 10
+monitoring = false
+monitorable = false
+script = ExtResource("3_hitbox")
+base_damage = 24.0
+target_zone = 1
+knockback = Vector2(220, -100)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="VisualRoot/KickHitbox"]
+shape = SubResource("RectangleShape2D_kick")
+
+[node name="WeaponHitbox" type="Area2D" parent="VisualRoot"]
+position = Vector2(58, -58)
+collision_layer = 4
+collision_mask = 10
+monitoring = false
+monitorable = false
+script = ExtResource("3_hitbox")
+base_damage = 36.0
+target_zone = 1
+knockback = Vector2(220, -70)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="VisualRoot/WeaponHitbox"]
+shape = SubResource("RectangleShape2D_weapon")
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state")]
+script = ExtResource("4_fsm")
+initial_state = NodePath("Idle")
+
+[node name="Idle" type="Node" parent="StateMachine"]
+script = ExtResource("5_idle")
+
+[node name="Move" type="Node" parent="StateMachine"]
+script = ExtResource("6_move")
+
+[node name="Jump" type="Node" parent="StateMachine"]
+script = ExtResource("7_jump")
+
+[node name="Crouch" type="Node" parent="StateMachine"]
+script = ExtResource("8_crouch")
+
+[node name="Attack" type="Node" parent="StateMachine"]
+script = ExtResource("9_attack")
+
+[node name="HitStun" type="Node" parent="StateMachine"]
+script = ExtResource("10_hitstun")
+
+[node name="BlockStun" type="Node" parent="StateMachine"]
+script = ExtResource("11_blockstun")
+
+[node name="Knockdown" type="Node" parent="StateMachine"]
+script = ExtResource("12_knockdown")
+
+[node name="GetUp" type="Node" parent="StateMachine"]
+script = ExtResource("13_getup")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+"": SubResource("AnimationLibrary_moves")
+}

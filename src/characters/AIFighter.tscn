@@ -1,0 +1,33 @@
+[gd_scene load_steps=3 format=3 uid="uid://b0s3q1k9x8l2m"]
+
+[ext_resource type="PackedScene" path="res://src/characters/Fighter.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/ai/AIFighter.gd" id="2_ai_script"]
+
+[node name="AIFighter" instance=ExtResource("1_base")]
+script = ExtResource("2_ai_script")
+fighter_name = "Shadow Bot"
+difficulty = 2
+
+[node name="HurtboxHead" parent="VisualRoot" index="7"]
+collision_layer = 8
+collision_mask = 6
+
+[node name="HurtboxTorso" parent="VisualRoot" index="8"]
+collision_layer = 8
+collision_mask = 6
+
+[node name="HurtboxLegs" parent="VisualRoot" index="9"]
+collision_layer = 8
+collision_mask = 6
+
+[node name="PunchHitbox" parent="VisualRoot" index="10"]
+collision_layer = 16
+collision_mask = 2
+
+[node name="KickHitbox" parent="VisualRoot" index="11"]
+collision_layer = 16
+collision_mask = 2
+
+[node name="WeaponHitbox" parent="VisualRoot" index="12"]
+collision_layer = 16
+collision_mask = 2

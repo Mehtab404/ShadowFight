@@ -1,0 +1,109 @@
+[gd_scene load_steps=8 format=3 uid="uid://b21km54o90v8y"]
+
+[ext_resource type="Script" path="res://src/arena/Arena.gd" id="1_arena_script"]
+[ext_resource type="PackedScene" path="res://src/characters/PlayerFighter.tscn" id="2_player_fighter"]
+[ext_resource type="PackedScene" path="res://src/characters/AIFighter.tscn" id="3_ai_fighter"]
+[ext_resource type="Script" path="res://src/arena/CameraController.gd" id="4_camera_script"]
+[ext_resource type="PackedScene" path="res://src/ui/HUD.tscn" id="5_hud_scene"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
+size = Vector2(1600, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall"]
+size = Vector2(80, 900)
+
+[node name="Arena" type="Node2D"]
+script = ExtResource("1_arena_script")
+
+[node name="ParallaxBackground" type="ParallaxBackground" parent="."]
+
+[node name="ParallaxLayerSky" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.1, 0.1)
+
+[node name="SkyBackdrop" type="Polygon2D" parent="ParallaxBackground/ParallaxLayerSky"]
+color = Color(0.11, 0.08, 0.14, 1)
+polygon = PackedVector2Array(-1200, -800, 1200, -800, 1200, 500, -1200, 500)
+
+[node name="CrimsonMoon" type="Polygon2D" parent="ParallaxBackground/ParallaxLayerSky"]
+position = Vector2(280, -220)
+color = Color(0.85, 0.18, 0.18, 0.9)
+polygon = PackedVector2Array(0, -90, 64, -64, 90, 0, 64, 64, 0, 90, -64, 64, -90, 0, -64, -64)
+
+[node name="ParallaxLayerMountains" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.25, 0.25)
+
+[node name="Mountains" type="Polygon2D" parent="ParallaxBackground/ParallaxLayerMountains"]
+color = Color(0.06, 0.04, 0.09, 1)
+polygon = PackedVector2Array(-1100, 100, -800, -260, -500, -40, -150, -320, 250, -80, 600, -280, 1100, 100)
+
+[node name="ParallaxLayerBamboo" type="ParallaxLayer" parent="ParallaxBackground"]
+motion_scale = Vector2(0.5, 0.5)
+
+[node name="BambooSilhouettes" type="Node2D" parent="ParallaxBackground/ParallaxLayerBamboo"]
+
+[node name="Stalk1" type="Line2D" parent="ParallaxBackground/ParallaxLayerBamboo/BambooSilhouettes"]
+points = PackedVector2Array(-540, 50, -530, -380)
+width = 16.0
+default_color = Color(0.03, 0.03, 0.05, 0.95)
+
+[node name="Stalk2" type="Line2D" parent="ParallaxBackground/ParallaxLayerBamboo/BambooSilhouettes"]
+points = PackedVector2Array(-420, 50, -415, -420)
+width = 20.0
+default_color = Color(0.03, 0.03, 0.05, 0.95)
+
+[node name="Stalk3" type="Line2D" parent="ParallaxBackground/ParallaxLayerBamboo/BambooSilhouettes"]
+points = PackedVector2Array(480, 50, 470, -400)
+width = 18.0
+default_color = Color(0.03, 0.03, 0.05, 0.95)
+
+[node name="Stalk4" type="Line2D" parent="ParallaxBackground/ParallaxLayerBamboo/BambooSilhouettes"]
+points = PackedVector2Array(580, 50, 590, -430)
+width = 22.0
+default_color = Color(0.03, 0.03, 0.05, 0.95)
+
+[node name="StageBounds" type="Node2D" parent="."]
+
+[node name="Floor" type="StaticBody2D" parent="StageBounds"]
+collision_layer = 32
+collision_mask = 1
+
+[node name="FloorShape" type="CollisionShape2D" parent="StageBounds/Floor"]
+position = Vector2(0, 40)
+shape = SubResource("RectangleShape2D_floor")
+
+[node name="StageFloorVisual" type="Polygon2D" parent="StageBounds/Floor"]
+color = Color(0.04, 0.04, 0.06, 1)
+polygon = PackedVector2Array(-800, 0, 800, 0, 800, 200, -800, 200)
+
+[node name="LeftWall" type="StaticBody2D" parent="StageBounds"]
+position = Vector2(-700, -250)
+collision_layer = 32
+collision_mask = 1
+
+[node name="WallShape" type="CollisionShape2D" parent="StageBounds/LeftWall"]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="RightWall" type="StaticBody2D" parent="StageBounds"]
+position = Vector2(700, -250)
+collision_layer = 32
+collision_mask = 1
+
+[node name="WallShape" type="CollisionShape2D" parent="StageBounds/RightWall"]
+shape = SubResource("RectangleShape2D_wall")
+
+[node name="Fighters" type="Node2D" parent="."]
+
+[node name="PlayerFighter" parent="Fighters" instance=ExtResource("2_player_fighter")]
+position = Vector2(-180, 0)
+
+[node name="AIFighter" parent="Fighters" instance=ExtResource("3_ai_fighter")]
+position = Vector2(180, 0)
+
+[node name="CameraController" type="Camera2D" parent="." node_paths=PackedStringArray("p1", "p2")]
+position = Vector2(0, -60)
+zoom = Vector2(1.1, 1.1)
+script = ExtResource("4_camera_script")
+p1 = NodePath("../Fighters/PlayerFighter")
+p2 = NodePath("../Fighters/AIFighter")
+
+[node name="HUD" parent="." instance=ExtResource("5_hud_scene")]
