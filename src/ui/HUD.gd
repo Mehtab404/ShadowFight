@@ -3,10 +3,12 @@ extends CanvasLayer
 
 @onready var p1_bar: ProgressBar = $Margin/TopBar/P1Container/P1HealthBar
 @onready var p1_damage_trail: ProgressBar = $Margin/TopBar/P1Container/P1HealthBar/DamageTrail
+@onready var p1_shadow_bar: ProgressBar = $Margin/TopBar/P1Container/P1ShadowBar
 @onready var p1_name_label: Label = $Margin/TopBar/P1Container/P1Name
 
 @onready var p2_bar: ProgressBar = $Margin/TopBar/P2Container/P2HealthBar
 @onready var p2_damage_trail: ProgressBar = $Margin/TopBar/P2Container/P2HealthBar/DamageTrail
+@onready var p2_shadow_bar: ProgressBar = $Margin/TopBar/P2Container/P2ShadowBar
 @onready var p2_name_label: Label = $Margin/TopBar/P2Container/P2Name
 
 @onready var timer_label: Label = $Margin/TopBar/TimerCenter/TimerLabel
@@ -16,6 +18,7 @@ extends CanvasLayer
 @onready var combo_label: Label = $Margin/ComboBanner/ComboLabel
 @onready var announcement_label: Label = $Margin/Announcement/BigLabel
 @onready var feedback_label: Label = $Margin/CombatFeedback/FeedbackLabel
+@onready var shadow_ready_label: Label = $Margin/ShadowReady/ReadyLabel
 
 var p1_ref: Fighter = null
 var p2_ref: Fighter = null
@@ -39,6 +42,9 @@ func setup(p1: Fighter, p2: Fighter) -> void:
 	
 	p1.health_changed.connect(_on_p1_health_changed)
 	p2.health_changed.connect(_on_p2_health_changed)
+	
+	p1.shadow_energy_changed.connect(_on_p1_shadow_changed)
+	p2.shadow_energy_changed.connect(_on_p2_shadow_changed)
 	
 	p1.combo_updated.connect(func(c): _on_combo_updated(p1, c))
 	p2.combo_updated.connect(func(c): _on_combo_updated(p2, c))
@@ -79,6 +85,20 @@ func _on_p2_health_changed(current: float, max_val: float) -> void:
 	var tween = create_tween()
 	tween.tween_property(p2_damage_trail, "value", target_val, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
+func _on_p1_shadow_changed(curr: float, max_val: float) -> void:
+	if p1_shadow_bar != null:
+		p1_shadow_bar.value = (curr / max_val) * 100.0
+	if shadow_ready_label != null:
+		if curr >= max_val:
+			shadow_ready_label.text = "⚡ SHADOW ABILITY READY [SPACE / U] ⚡"
+			shadow_ready_label.modulate = Color(0.85, 0.4, 1.0)
+		else:
+			shadow_ready_label.text = ""
+
+func _on_p2_shadow_changed(curr: float, max_val: float) -> void:
+	if p2_shadow_bar != null:
+		p2_shadow_bar.value = (curr / max_val) * 100.0
+
 func _on_timer_updated(seconds: int) -> void:
 	timer_label.text = str(seconds)
 	if seconds <= 10:
@@ -97,7 +117,10 @@ func _on_combo_updated(fighter: Fighter, count: int) -> void:
 
 func _on_round_started(round_num: int) -> void:
 	_update_win_markers()
-	_show_announcement("ROUND %d" % round_num)
+	if GameManager.game_mode == 1:
+		_show_announcement("TIER %d: ROUND %d" % [GameManager.tournament_tier, round_num])
+	else:
+		_show_announcement("ROUND %d" % round_num)
 	await get_tree().create_timer(1.0).timeout
 	_show_announcement("FIGHT!")
 
@@ -111,7 +134,13 @@ func _on_round_ended(winner: Node) -> void:
 func _on_match_ended(champion: Node) -> void:
 	_update_win_markers()
 	if champion != null and champion is Fighter:
-		_show_announcement("VICTORY!\n%s IS THE SHADOW RONIN" % champion.fighter_name.to_upper())
+		if GameManager.game_mode == 1:
+			if champion == p1_ref:
+				_show_announcement("🏆 TOURNAMENT CHAMPION!\n%s CONQUERS ALL!" % champion.fighter_name.to_upper())
+			else:
+				_show_announcement("DEFEATED IN TIER %d!\nTRAIN AND RETURN" % GameManager.tournament_tier)
+		else:
+			_show_announcement("VICTORY!\n%s IS THE SHADOW RONIN" % champion.fighter_name.to_upper())
 
 func _update_win_markers() -> void:
 	# Refresh round win tokens

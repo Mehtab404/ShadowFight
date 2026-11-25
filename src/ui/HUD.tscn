@@ -24,6 +24,13 @@ bg_color = Color(0.9, 0.24, 0.24, 1)
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shadow_fill"]
+bg_color = Color(0.72, 0.32, 0.95, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud_script")
 
@@ -74,6 +81,14 @@ theme_override_styles/fill = SubResource("StyleBoxFlat_damage_trail")
 value = 100.0
 show_percentage = false
 
+[node name="P1ShadowBar" type="ProgressBar" parent="Margin/TopBar/P1Container"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_shadow_fill")
+value = 0.0
+show_percentage = false
+
 [node name="WinMarkers" type="HBoxContainer" parent="Margin/TopBar/P1Container"]
 layout_mode = 2
 
@@ -118,6 +133,15 @@ grow_vertical = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_bg")
 theme_override_styles/fill = SubResource("StyleBoxFlat_damage_trail")
 value = 100.0
+fill_mode = 1
+show_percentage = false
+
+[node name="P2ShadowBar" type="ProgressBar" parent="Margin/TopBar/P2Container"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_shadow_fill")
+value = 0.0
 fill_mode = 1
 show_percentage = false
 
@@ -180,4 +204,28 @@ offset_bottom = 120.0
 grow_horizontal = 2
 theme_override_font_sizes/font_size = 24
 text = "PARRY DEFLECT!"
+horizontal_alignment = 1
+
+[node name="ShadowReady" type="Control" parent="Margin"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ReadyLabel" type="Label" parent="Margin/ShadowReady"]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -60.0
+offset_right = 220.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_colors/font_color = Color(0.85, 0.4, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1

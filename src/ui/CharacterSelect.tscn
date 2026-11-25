@@ -1,0 +1,142 @@
+[gd_scene load_steps=3 format=3 uid="uid://b00g7q9m3x5k2"]
+
+[ext_resource type="Script" path="res://src/ui/CharacterSelect.gd" id="1_char_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+bg_color = Color(0.08, 0.08, 0.12, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.25, 0.25, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="CharacterSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_char_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.06, 0.05, 0.08, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 64
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 64
+theme_override_constants/margin_bottom = 40
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="Title" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.98, 1)
+theme_override_font_sizes/font_size = 42
+text = "CHOOSE YOUR SHADOW FIGHTER"
+horizontal_alignment = 1
+
+[node name="Content" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 40
+alignment = 1
+
+[node name="PrevBtn" type="Button" parent="Margin/VBox/Content"]
+custom_minimum_size = Vector2(60, 120)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 28
+text = "◀"
+
+[node name="Details" type="PanelContainer" parent="Margin/VBox/Content"]
+custom_minimum_size = Vector2(560, 320)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+
+[node name="VBox" type="VBoxContainer" parent="Margin/VBox/Content/Details"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Name" type="Label" parent="Margin/VBox/Content/Details/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
+theme_override_font_sizes/font_size = 28
+text = "SHADOW RONIN"
+horizontal_alignment = 1
+
+[node name="Desc" type="Label" parent="Margin/VBox/Content/Details/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Balanced martial artist mastering mid-range katana footsies."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="Stats" type="VBoxContainer" parent="Margin/VBox/Content/Details/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HealthVal" type="Label" parent="Margin/VBox/Content/Details/VBox/Stats"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.9, 0.4, 1)
+text = "HEALTH: 100 HP"
+horizontal_alignment = 1
+
+[node name="SpeedVal" type="Label" parent="Margin/VBox/Content/Details/VBox/Stats"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+text = "SPEED: Normal (1.0x)"
+horizontal_alignment = 1
+
+[node name="WeaponVal" type="Label" parent="Margin/VBox/Content/Details/VBox/Stats"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.2, 1)
+text = "STARTING WEAPON: Katana"
+horizontal_alignment = 1
+
+[node name="NextBtn" type="Button" parent="Margin/VBox/Content"]
+custom_minimum_size = Vector2(60, 120)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 28
+text = "▶"
+
+[node name="Actions" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="BackBtn" type="Button" parent="Margin/VBox/Actions"]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "BACK"
+
+[node name="SelectBtn" type="Button" parent="Margin/VBox/Actions"]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+text = "ENTER BATTLE ⚔️"
+
+[connection signal="pressed" from="Margin/VBox/Content/PrevBtn" to="." method="_on_prev_pressed"]
+[connection signal="pressed" from="Margin/VBox/Content/NextBtn" to="." method="_on_next_pressed"]
+[connection signal="pressed" from="Margin/VBox/Actions/BackBtn" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="Margin/VBox/Actions/SelectBtn" to="." method="_on_select_pressed"]

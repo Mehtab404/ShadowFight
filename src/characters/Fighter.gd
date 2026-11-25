@@ -2,6 +2,7 @@ class_name Fighter
 extends CharacterBody2D
 
 signal health_changed(current: float, max_val: float)
+signal shadow_energy_changed(current: float, max_val: float)
 signal hit_taken_event(damage: float, zone: DamageCalculator.HitZone, is_blocked: bool)
 signal parry_performed()
 signal defeated()
@@ -12,6 +13,8 @@ signal combo_updated(count: int)
 @export var gravity: float = 980.0
 
 var health: float = 100.0
+var shadow_energy: float = 0.0
+var max_shadow_energy: float = 100.0
 var opponent: Fighter = null
 var facing_direction: int = 1 # 1 = right, -1 = left
 var is_invulnerable: bool = false
@@ -36,11 +39,26 @@ var was_guarding_last_frame: bool = false
 
 func _ready() -> void:
 	health = max_health
+	shadow_energy = 0.0
 	if current_weapon == null:
 		equip_weapon(WeaponData.create_katana())
 	if state_machine != null:
 		state_machine.init(self)
 	health_changed.emit(health, max_health)
+	shadow_energy_changed.emit(shadow_energy, max_shadow_energy)
+
+func add_shadow_energy(amount: float) -> void:
+	shadow_energy = clampf(shadow_energy + amount, 0.0, max_shadow_energy)
+	shadow_energy_changed.emit(shadow_energy, max_shadow_energy)
+
+func try_activate_shadow_ability() -> bool:
+	if shadow_energy >= max_shadow_energy and state_machine != null:
+		if state_machine.current_state is IdleState or state_machine.current_state is MoveState:
+			shadow_energy = 0.0
+			shadow_energy_changed.emit(shadow_energy, max_shadow_energy)
+			state_machine.change_state("shadowability")
+			return true
+	return false
 
 func equip_weapon(weapon: WeaponData) -> void:
 	current_weapon = weapon
@@ -164,6 +182,7 @@ func take_hit(hitbox: Hitbox, zone: DamageCalculator.HitZone) -> void:
 		if is_parry:
 			# JUST-FRAME PARRY DEFLECTION: Zero chip damage, attacker staggered, defender advantage!
 			AudioManager.play_parry_deflect()
+			add_shadow_energy(30.0)
 			if get_parent() != null:
 				HitSparks.spawn_at(get_parent(), global_position + Vector2(0, -60), true)
 			HitstopManager.trigger_hitstop(8, 12.0)
@@ -181,8 +200,11 @@ func take_hit(hitbox: Hitbox, zone: DamageCalculator.HitZone) -> void:
 
 		var chip_damage = maxf(1.0, hitbox.base_damage * 0.15)
 		health -= chip_damage
+		add_shadow_energy(8.0)
 		health_changed.emit(health, max_health)
 		hit_taken_event.emit(chip_damage, zone, true)
+		if get_parent() != null:
+			DamageNumber.spawn(get_parent(), global_position + Vector2(0, -75), chip_damage, false, true)
 		
 		HitstopManager.trigger_hitstop(2, 2.0)
 		state_machine.change_state("blockstun", {
@@ -192,9 +214,11 @@ func take_hit(hitbox: Hitbox, zone: DamageCalculator.HitZone) -> void:
 		return
 		
 	# Unblocked clean hit
+	add_shadow_energy(14.0)
 	if hitbox.attacker != null and hitbox.attacker is Fighter:
 		var att_fighter: Fighter = hitbox.attacker
 		att_fighter.increment_combo()
+		att_fighter.add_shadow_energy(18.0)
 		combo_count = att_fighter.combo_count
 	else:
 		combo_count += 1
@@ -204,6 +228,8 @@ func take_hit(hitbox: Hitbox, zone: DamageCalculator.HitZone) -> void:
 	health = maxf(0.0, health)
 	health_changed.emit(health, max_health)
 	hit_taken_event.emit(final_damage, zone, false)
+	if get_parent() != null:
+		DamageNumber.spawn(get_parent(), global_position + Vector2(0, -85), final_damage, zone == DamageCalculator.HitZone.HEAD, false)
 	
 	# Audio dispatch based on zone
 	if zone == DamageCalculator.HitZone.HEAD:
@@ -262,9 +288,11 @@ func flash_hit_effect() -> void:
 
 func reset_for_round() -> void:
 	health = max_health
+	shadow_energy = 0.0
 	reset_combo()
 	set_invulnerable(false)
 	velocity = Vector2.ZERO
 	health_changed.emit(health, max_health)
+	shadow_energy_changed.emit(shadow_energy, max_shadow_energy)
 	if state_machine != null:
 		state_machine.change_state("idle")

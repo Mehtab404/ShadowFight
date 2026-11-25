@@ -49,6 +49,11 @@ func _update_ai_decisions(delta: float) -> void:
 	else:
 		ai_blocking = false
 		
+	# Shadow Ability Activation when charged
+	if shadow_energy >= max_shadow_energy and dist < 280.0:
+		if try_activate_shadow_ability():
+			return
+		
 	if decision_timer > 0.0:
 		return
 		

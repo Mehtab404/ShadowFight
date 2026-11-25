@@ -17,7 +17,13 @@ func _update_stage_button() -> void:
 		stage_btn.text = "⛩️ STAGE: " + STAGE_NAMES[GameManager.selected_stage]
 
 func _on_play_ai_pressed() -> void:
-	get_tree().change_scene_to_file("res://src/arena/Arena.tscn")
+	GameManager.game_mode = 0
+	get_tree().change_scene_to_file("res://src/ui/CharacterSelect.tscn")
+
+func _on_tournament_pressed() -> void:
+	GameManager.game_mode = 1
+	GameManager.tournament_tier = 1
+	get_tree().change_scene_to_file("res://src/ui/CharacterSelect.tscn")
 
 func _on_stage_btn_pressed() -> void:
 	GameManager.selected_stage = (GameManager.selected_stage + 1) % STAGE_NAMES.size()

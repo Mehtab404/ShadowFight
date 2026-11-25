@@ -20,6 +20,11 @@ enum MatchState {
 @export var round_time_limit: int = 99
 @export var rounds_to_win: int = 2
 @export var selected_stage: int = 0 # 0: Twilight Dojo, 1: Bamboo Forest, 2: Burning Temple
+@export var selected_character: int = 0 # 0: Ronin, 1: Kunoichi, 2: Iron Monk
+@export var game_mode: int = 0 # 0: Duel AI, 1: Tournament, 2: Practice
+@export var tournament_tier: int = 1 # 1: Apprentice Shinobi, 2: Shadow Kunoichi, 3: Demon Shogun Boss
+
+signal tournament_tier_advanced(new_tier: int)
 
 var current_state: MatchState = MatchState.INITIALIZING
 var current_round: int = 1
@@ -96,8 +101,18 @@ func finish_round(winner: Node) -> void:
 	await get_tree().create_timer(2.5).timeout
 	
 	if p1_round_wins >= rounds_to_win:
-		current_state = MatchState.MATCH_OVER
-		match_ended.emit(p1_fighter)
+		if game_mode == 1 and tournament_tier < 3:
+			tournament_tier += 1
+			p1_round_wins = 0
+			p2_round_wins = 0
+			current_round = 1
+			tournament_tier_advanced.emit(tournament_tier)
+			await get_tree().create_timer(1.2).timeout
+			get_tree().reload_current_scene()
+			return
+		else:
+			current_state = MatchState.MATCH_OVER
+			match_ended.emit(p1_fighter)
 	elif p2_round_wins >= rounds_to_win:
 		current_state = MatchState.MATCH_OVER
 		match_ended.emit(p2_fighter)

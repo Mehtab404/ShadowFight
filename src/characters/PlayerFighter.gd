@@ -66,6 +66,11 @@ func check_attack_inputs(airborne: bool = false) -> bool:
 	elif Input.is_key_pressed(KEY_4):
 		equip_weapon(WeaponData.create_kusarigama())
 
+	# Shadow Ability Super Move (U or Spacebar)
+	if Input.is_key_pressed(KEY_U) or Input.is_key_pressed(KEY_SPACE):
+		if try_activate_shadow_ability():
+			return true
+
 	if airborne:
 		if Input.is_action_just_pressed(prefix + "kick"):
 			_start_attack({

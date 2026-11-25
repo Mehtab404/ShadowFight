@@ -27,7 +27,47 @@ func _ready() -> void:
 	p2.facing_direction = -1
 	p2.visual_root.scale.x = -1.0
 	
-	apply_stage_theme(GameManager.selected_stage)
+	# Apply selected player archetype
+	match GameManager.selected_character:
+		0: # Ronin
+			p1.fighter_name = "Shadow Ronin"
+			p1.max_health = 100.0
+			p1.equip_weapon(WeaponData.create_katana())
+		1: # Kunoichi
+			p1.fighter_name = "Kunoichi"
+			p1.max_health = 90.0
+			p1.equip_weapon(WeaponData.create_kusarigama())
+		2: # Iron Monk
+			p1.fighter_name = "Iron Monk"
+			p1.max_health = 120.0
+			p1.equip_weapon(WeaponData.create_bare_hands())
+			
+	# Configure Opponent AI based on game mode and tournament tier
+	if GameManager.game_mode == 1:
+		match GameManager.tournament_tier:
+			1:
+				p2.fighter_name = "Apprentice Shinobi"
+				p2.max_health = 85.0
+				p2.health = 85.0
+				p2.difficulty = AIFighter.AIDifficulty.EASY
+				p2.equip_weapon(WeaponData.create_bare_hands())
+				apply_stage_theme(0)
+			2:
+				p2.fighter_name = "Shadow Kunoichi"
+				p2.max_health = 100.0
+				p2.health = 100.0
+				p2.difficulty = AIFighter.AIDifficulty.MEDIUM
+				p2.equip_weapon(WeaponData.create_kusarigama())
+				apply_stage_theme(1)
+			3:
+				p2.fighter_name = "Demon Shogun (BOSS)"
+				p2.max_health = 135.0
+				p2.health = 135.0
+				p2.difficulty = AIFighter.AIDifficulty.MASTER
+				p2.equip_weapon(WeaponData.create_naginata())
+				apply_stage_theme(2)
+	else:
+		apply_stage_theme(GameManager.selected_stage)
 	
 	# Register with Game Manager
 	GameManager.register_fighters(p1, p2)

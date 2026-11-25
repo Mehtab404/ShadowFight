@@ -83,6 +83,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "⚔️ DUEL ENEMY AI"
 
+[node name="TournamentBtn" type="Button" parent="Margin/VBox/ButtonContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "🏆 TOURNAMENT LADDER"
+
 [node name="StageBtn" type="Button" parent="Margin/VBox/ButtonContainer"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
@@ -152,6 +158,7 @@ size_flags_horizontal = 4
 text = "CLOSE"
 
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/PlayBtn" to="." method="_on_play_ai_pressed"]
+[connection signal="pressed" from="Margin/VBox/ButtonContainer/TournamentBtn" to="." method="_on_tournament_pressed"]
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/StageBtn" to="." method="_on_stage_btn_pressed"]
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/AudioBtn" to="." method="_on_audio_btn_pressed"]
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/ControlsBtn" to="." method="_on_controls_pressed"]

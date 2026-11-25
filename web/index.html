@@ -154,6 +154,9 @@
             <div id="p1-trail" class="health-trail" style="width: 100%;"></div>
             <div id="p1-fill" class="health-fill" style="width: 100%;"></div>
           </div>
+          <div class="shadow-bar-bg" style="height:6px; background:rgba(15,23,42,0.9); margin-top:4px; border-radius:2px; overflow:hidden; border:1px solid rgba(139,92,246,0.3);">
+            <div id="p1-shadow" style="width:0%; height:100%; background:linear-gradient(90deg, #7c3aed, #c084fc); transition:width 0.15s;"></div>
+          </div>
         </div>
 
         <div id="timer" class="timer-box">99</div>
@@ -164,6 +167,9 @@
             <div id="p2-trail" class="health-trail" style="width: 100%;"></div>
             <div id="p2-fill" class="health-fill" style="width: 100%;"></div>
           </div>
+          <div class="shadow-bar-bg" style="height:6px; background:rgba(15,23,42,0.9); margin-top:4px; border-radius:2px; overflow:hidden; border:1px solid rgba(139,92,246,0.3);">
+            <div id="p2-shadow" style="width:0%; height:100%; background:linear-gradient(90deg, #c084fc, #7c3aed); transition:width 0.15s; margin-left:auto;"></div>
+          </div>
         </div>
       </div>
 
@@ -172,10 +178,11 @@
 
       <div style="display:flex; justify-content:space-between; align-items:center; color:#94a3b8; font-size:12px; pointer-events:auto;">
         <div style="display:flex; gap:10px;">
+          <button id="char-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">🥋 FIGHTER: RONIN</button>
           <button id="stage-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">⛩️ STAGE: DOJO</button>
           <button id="bgm-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">🎵 BGM: ON</button>
         </div>
-        <div>PRESS <span class="key-badge">1</span> BARE | <span class="key-badge">2</span> KATANA | <span class="key-badge">3</span> NAGINATA | <span class="key-badge">4</span> KUSARIGAMA</div>
+        <div>SUPER: <span class="key-badge">SPACE</span> / <span class="key-badge">U</span> | WEAPONS: <span class="key-badge">1</span>..<span class="key-badge">4</span></div>
       </div>
     </div>
 
@@ -191,6 +198,7 @@
         <button id="btn-punch" class="touch-btn" style="width:48px; height:48px; background:rgba(220,38,38,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">JAB</button>
         <button id="btn-kick" class="touch-btn" style="width:48px; height:48px; background:rgba(234,88,12,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">KICK</button>
         <button id="btn-weapon" class="touch-btn" style="width:48px; height:48px; background:rgba(59,130,246,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">SLASH</button>
+        <button id="btn-shadow" class="touch-btn" style="width:52px; height:48px; background:rgba(147,51,234,0.8); border:1px solid rgba(255,255,255,0.3); border-radius:8px; color:#fff; font-weight:800; font-size:10px;">SHADOW</button>
         <button id="btn-block" class="touch-btn" style="width:48px; height:48px; background:rgba(16,185,129,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">GUARD</button>
       </div>
     </div>
@@ -338,7 +346,45 @@
     bindTouch('btn-punch', 'j');
     bindTouch('btn-kick', 'k');
     bindTouch('btn-weapon', 'l');
+    bindTouch('btn-shadow', 'u');
     bindTouch('btn-block', 'i');
+
+    // Fighter Archetype Roster
+    const ROSTER = [
+      { name: "Ronin", weapon: "katana", maxHealth: 100, label: "🥋 FIGHTER: RONIN" },
+      { name: "Kunoichi", weapon: "kusarigama", maxHealth: 90, label: "🥷 FIGHTER: KUNOICHI" },
+      { name: "Iron Monk", weapon: "bare", maxHealth: 120, label: "🥊 FIGHTER: IRON MONK" }
+    ];
+    let currentCharIdx = 0;
+
+    const charToggleBtn = document.getElementById('char-toggle-btn');
+    if (charToggleBtn) {
+      charToggleBtn.addEventListener('click', () => {
+        currentCharIdx = (currentCharIdx + 1) % ROSTER.length;
+        const charData = ROSTER[currentCharIdx];
+        p1.name = "Shadow " + charData.name;
+        p1.maxHealth = charData.maxHealth;
+        p1.health = charData.maxHealth;
+        p1.setWeapon(charData.weapon);
+        charToggleBtn.innerText = charData.label;
+        document.getElementById('p1-name').innerText = p1.name.toUpperCase();
+        updateHealthUI();
+        SFX.whoosh();
+      });
+    }
+
+    // Floating combat damage numbers
+    const floatingNumbers = [];
+    function spawnDamageNumber(x, y, text, color = '#fef08a') {
+      floatingNumbers.push({
+        x: x + (Math.random() - 0.5) * 20,
+        y,
+        text,
+        color,
+        life: 1.0,
+        vy: -1.7
+      });
+    }
 
     // --- DAMAGE FORMULA ---
     // D_final = D_base * M_zone * max(0.3, 1 - 0.1*(C - 1))
@@ -392,8 +438,12 @@
         this.name = name;
         this.health = 100;
         this.maxHealth = 100;
+        this.shadowEnergy = 0;
+        this.maxShadowEnergy = 100;
+        this.shadowPhase = '';
+        this.shadowTimer = 0;
         this.weapon = 'katana';
-        this.state = 'idle'; // idle, move, dash, jump, crouch, attack, hitstun, blockstun, knockdown, getup
+        this.state = 'idle'; // idle, move, dash, jump, crouch, attack, hitstun, blockstun, knockdown, getup, shadow_super
         this.stateTimer = 0;
         this.combo = 0;
         this.comboTimer = 0;
@@ -408,6 +458,28 @@
         this.squash = 1.0;
         this.tilt = 0.0;
         this.wasAirborne = false;
+      }
+
+      addShadowEnergy(amt) {
+        this.shadowEnergy = Math.min(this.maxShadowEnergy, this.shadowEnergy + amt);
+        updateHealthUI();
+      }
+
+      triggerShadowAbility(opponent) {
+        if (this.shadowEnergy < 100) return;
+        this.shadowEnergy = 0;
+        updateHealthUI();
+        this.state = 'shadow_super';
+        this.shadowPhase = 'eclipse';
+        this.shadowTimer = 22;
+        this.invulnerable = true;
+        this.vx = 0;
+        this.vy = 0;
+        SFX.taiko(45);
+        SFX.whoosh();
+        announce(this.name.toUpperCase() + "\nSHADOW ABILITY!", 1400);
+        spawnSparks(this.x, this.y - 60, 35, '#c084fc');
+        triggerHitstop(8);
       }
 
       setWeapon(w) {
@@ -507,6 +579,15 @@
         const punch = KEYS['j'];
         const kick = KEYS['k'];
         const weaponBtn = KEYS['l'];
+        const superBtn = KEYS[' '] || KEYS['u'];
+
+        // Super Shadow Ability
+        if (superBtn && this.shadowEnergy >= 100) {
+          KEYS[' '] = false;
+          KEYS['u'] = false;
+          this.triggerShadowAbility(opponent);
+          return;
+        }
 
         // Jump
         if (up && this.y >= GROUND_Y) {
@@ -576,6 +657,12 @@
           this.aiDecisionTimer = 0.16 + Math.random() * 0.22;
           const oppAttacking = opponent.state === 'attack';
 
+          // Super Shadow Ability if fully charged
+          if (this.shadowEnergy >= 100 && dist < 220 && Math.random() < 0.35) {
+            this.triggerShadowAbility(opponent);
+            return;
+          }
+
           // Reactive block
           if (oppAttacking && dist < 180 && Math.random() < 0.75) {
             this.state = 'move';
@@ -641,6 +728,39 @@
           this.stateTimer--;
           if (this.stateTimer <= 0) {
             this.state = 'idle';
+          }
+        } else if (this.state === 'shadow_super') {
+          this.shadowTimer--;
+          if (this.shadowPhase === 'eclipse') {
+            this.vx = this.facing * 18.0;
+            if (Math.random() < 0.4) spawnSparks(this.x, this.y - 50, 4, '#a855f7');
+            if (this.shadowTimer <= 0) {
+              this.shadowPhase = 'slash';
+              this.shadowTimer = 24;
+              this.vx = 0;
+              this.facing = -this.facing;
+              this.facingSmooth = this.facing;
+              SFX.slash();
+              SFX.knockdown();
+              spawnSparks(opponent.x, opponent.y - 65, 45, '#e879f9');
+              triggerHitstop(12);
+              spawnDamageNumber(opponent.x, opponent.y - 85, 'SHADOW 50', '#c084fc');
+              opponent.health = Math.max(0, opponent.health - 50);
+              opponent.state = 'knockdown';
+              opponent.stateTimer = 65;
+              opponent.vx = this.facing * 9.0;
+              opponent.vy = -7.5;
+              updateHealthUI();
+              if (opponent.health <= 0) {
+                onKnockout(this);
+              }
+            }
+          } else if (this.shadowPhase === 'slash') {
+            if (this.shadowTimer <= 0) {
+              this.state = 'idle';
+              this.invulnerable = false;
+              this.shadowPhase = '';
+            }
           }
         } else if (this.state === 'attack') {
           this.stateTimer--;
@@ -721,7 +841,9 @@
           if (isParry) {
             // JUST-FRAME PARRY DEFLECTION!
             SFX.parry();
+            this.addShadowEnergy(30);
             spawnSparks(hitX, hitY, 30, '#38bdf8');
+            spawnDamageNumber(hitX, hitY - 25, 'PARRY DEFLECT!', '#38bdf8');
             announce("PARRY DEFLECT!", 900);
             triggerHitstop(8);
             attacker.state = 'hitstun';
@@ -732,8 +854,10 @@
 
           // Regular Block
           SFX.block();
+          this.addShadowEnergy(8);
           spawnSparks(hitX, hitY, 12, '#38bdf8');
           const chip = Math.max(1, Math.round(move.base * 0.15));
+          spawnDamageNumber(hitX, hitY - 25, '🛡️ ' + chip, '#38bdf8');
           this.health = Math.max(0, this.health - chip);
           this.state = 'blockstun';
           this.stateTimer = 14;
@@ -742,15 +866,18 @@
           updateHealthUI();
           return;
         }
-        }
 
         // Clean Hit
         attacker.combo++;
         attacker.comboTimer = 1.3;
         showCombo(attacker.name, attacker.combo);
 
+        this.addShadowEnergy(14);
+        attacker.addShadowEnergy(18);
+
         const dmg = calculateDamage(move.base, move.zone, attacker.combo);
         this.health = Math.max(0, this.health - dmg);
+        spawnDamageNumber(hitX, hitY - 25, (move.zone === 'head' ? 'CRIT ' : '') + dmg, (move.zone === 'head' ? '#ef4444' : '#fef08a'));
         updateHealthUI();
 
         if (SFX[move.sfx]) SFX[move.sfx]();
@@ -787,8 +914,16 @@
         ctx.rotate(this.tilt);
 
         // Rim light / Glow effect
-        ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.65)' : 'rgba(56, 189, 248, 0.65)');
-        ctx.shadowBlur = (this.state === 'attack' && this.attackPhase === 'active') ? 22 : 8;
+        if (this.state === 'shadow_super') {
+          ctx.shadowColor = '#c084fc';
+          ctx.shadowBlur = 38;
+        } else if (this.shadowEnergy >= 100) {
+          ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.95)' : 'rgba(168, 85, 247, 0.95)');
+          ctx.shadowBlur = 20;
+        } else {
+          ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.65)' : 'rgba(56, 189, 248, 0.65)');
+          ctx.shadowBlur = (this.state === 'attack' && this.attackPhase === 'active') ? 22 : 8;
+        }
 
         ctx.fillStyle = '#050408'; // Deep silhouette
         ctx.strokeStyle = '#050408';
@@ -1012,6 +1147,19 @@
       document.getElementById('p1-trail').style.width = p1Pct + '%';
       document.getElementById('p2-fill').style.width = p2Pct + '%';
       document.getElementById('p2-trail').style.width = p2Pct + '%';
+
+      const p1Shadow = document.getElementById('p1-shadow');
+      const p2Shadow = document.getElementById('p2-shadow');
+      if (p1Shadow) {
+        const p1ShPct = (p1.shadowEnergy / p1.maxShadowEnergy) * 100;
+        p1Shadow.style.width = p1ShPct + '%';
+        p1Shadow.style.boxShadow = p1.shadowEnergy >= 100 ? '0 0 12px #a855f7' : 'none';
+      }
+      if (p2Shadow) {
+        const p2ShPct = (p2.shadowEnergy / p2.maxShadowEnergy) * 100;
+        p2Shadow.style.width = p2ShPct + '%';
+        p2Shadow.style.boxShadow = p2.shadowEnergy >= 100 ? '0 0 12px #a855f7' : 'none';
+      }
     }
 
     function showCombo(name, count) {
@@ -1042,8 +1190,8 @@
     }
 
     function resetMatch() {
-      p1.health = 100; p1.x = 360; p1.state = 'idle'; p1.combo = 0;
-      p2.health = 100; p2.x = 740; p2.state = 'idle'; p2.combo = 0;
+      p1.health = p1.maxHealth; p1.x = 360; p1.state = 'idle'; p1.combo = 0; p1.shadowEnergy = 0;
+      p2.health = p2.maxHealth; p2.x = 740; p2.state = 'idle'; p2.combo = 0; p2.shadowEnergy = 0;
       matchTimer = 99;
       updateHealthUI();
       announce("ROUND 1\nFIGHT!", 1800);
@@ -1167,6 +1315,26 @@
         ctx.fill();
       }
       ctx.globalAlpha = 1.0;
+
+      // 6. RENDER FLOATING DAMAGE NUMBERS
+      for (let i = floatingNumbers.length - 1; i >= 0; i--) {
+        const fn = floatingNumbers[i];
+        fn.y += fn.vy;
+        fn.life -= 0.022;
+        if (fn.life <= 0) {
+          floatingNumbers.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.font = 'bold 18px Impact, sans-serif';
+        ctx.fillStyle = fn.color;
+        ctx.globalAlpha = Math.min(1.0, fn.life * 1.6);
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 6;
+        ctx.textAlign = 'center';
+        ctx.fillText(fn.text, fn.x, fn.y);
+        ctx.restore();
+      }
     }
 
     loop();
