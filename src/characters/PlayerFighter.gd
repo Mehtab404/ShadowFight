@@ -36,6 +36,14 @@ func is_holding_block() -> bool:
 	return false
 
 func check_attack_inputs(airborne: bool = false) -> bool:
+	# Weapon Switch Hotkeys (1: Bare Hands, 2: Katana, 3: Naginata)
+	if Input.is_key_pressed(KEY_1):
+		equip_weapon(WeaponData.create_bare_hands())
+	elif Input.is_key_pressed(KEY_2):
+		equip_weapon(WeaponData.create_katana())
+	elif Input.is_key_pressed(KEY_3):
+		equip_weapon(WeaponData.create_naginata())
+
 	if airborne:
 		if Input.is_action_just_pressed(prefix + "kick"):
 			_start_attack({
@@ -53,45 +61,97 @@ func check_attack_inputs(airborne: bool = false) -> bool:
 	var move = get_movement_input()
 	var forward_held = (move > 0 and facing_direction > 0) or (move < 0 and facing_direction < 0)
 	var up_held = Input.is_action_pressed(prefix + "jump")
+	var down_held = Input.is_action_pressed(prefix + "crouch")
 
-	# Up + Weapon: Katana Overhead Slash
-	if up_held and Input.is_action_just_pressed(prefix + "weapon"):
-		_start_attack({
-			"anim": "katana_overhead",
-			"hitbox_name": "WeaponHitbox",
-			"damage": 42.0,
-			"startup_f": 16, "active_f": 6, "recovery_f": 18,
-			"knockback": Vector2(240, -100),
-			"target_zone": DamageCalculator.HitZone.HEAD,
-			"is_knockdown": true
-		})
-		return true
+	# Weapon Moves depending on equipped weapon
+	if current_weapon != null and current_weapon.weapon_type == WeaponData.WeaponType.NAGINATA:
+		# Naginata Moves: Extended reach, sweeping attacks
+		if down_held and Input.is_action_just_pressed(prefix + "weapon"):
+			_start_attack({
+				"anim": "naginata_sweep",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 32.0,
+				"startup_f": 14, "active_f": 6, "recovery_f": 20,
+				"knockback": Vector2(240, -110),
+				"target_zone": DamageCalculator.HitZone.LEGS,
+				"is_knockdown": true
+			})
+			return true
+		if forward_held and Input.is_action_just_pressed(prefix + "weapon"):
+			_start_attack({
+				"anim": "naginata_thrust",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 35.0,
+				"startup_f": 15, "active_f": 5, "recovery_f": 19,
+				"knockback": Vector2(260, -60),
+				"target_zone": DamageCalculator.HitZone.TORSO,
+				"is_knockdown": false
+			})
+			return true
+		if Input.is_action_just_pressed(prefix + "weapon"):
+			_start_attack({
+				"anim": "naginata_spin",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 26.0,
+				"startup_f": 11, "active_f": 5, "recovery_f": 14,
+				"knockback": Vector2(210, -50),
+				"target_zone": DamageCalculator.HitZone.HEAD,
+				"is_knockdown": false
+			})
+			return true
+	elif current_weapon != null and current_weapon.weapon_type == WeaponData.WeaponType.BARE_HANDS:
+		# Bare Hands Martial Arts: Rapid combo punches
+		if Input.is_action_just_pressed(prefix + "weapon") or Input.is_action_just_pressed(prefix + "punch"):
+			_start_attack({
+				"anim": "punch_straight",
+				"hitbox_name": "PunchHitbox",
+				"damage": 18.0 * current_weapon.base_damage_mult,
+				"startup_f": 5, "active_f": 3, "recovery_f": 7,
+				"knockback": Vector2(160, -40),
+				"target_zone": DamageCalculator.HitZone.HEAD,
+				"is_knockdown": false
+			})
+			return true
+	else:
+		# Katana Moves (Standard)
+		# Up + Weapon: Katana Overhead Slash
+		if up_held and Input.is_action_just_pressed(prefix + "weapon"):
+			_start_attack({
+				"anim": "katana_overhead",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 42.0,
+				"startup_f": 16, "active_f": 6, "recovery_f": 18,
+				"knockback": Vector2(240, -100),
+				"target_zone": DamageCalculator.HitZone.HEAD,
+				"is_knockdown": true
+			})
+			return true
 
-	# Forward + Weapon: Katana Thrust
-	if forward_held and Input.is_action_just_pressed(prefix + "weapon"):
-		_start_attack({
-			"anim": "katana_thrust",
-			"hitbox_name": "WeaponHitbox",
-			"damage": 30.0,
-			"startup_f": 13, "active_f": 4, "recovery_f": 16,
-			"knockback": Vector2(200, -50),
-			"target_zone": DamageCalculator.HitZone.TORSO,
-			"is_knockdown": false
-		})
-		return true
+		# Forward + Weapon: Katana Thrust
+		if forward_held and Input.is_action_just_pressed(prefix + "weapon"):
+			_start_attack({
+				"anim": "katana_thrust",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 30.0,
+				"startup_f": 13, "active_f": 4, "recovery_f": 16,
+				"knockback": Vector2(200, -50),
+				"target_zone": DamageCalculator.HitZone.TORSO,
+				"is_knockdown": false
+			})
+			return true
 
-	# Neutral Weapon: Katana Quick Draw
-	if Input.is_action_just_pressed(prefix + "weapon"):
-		_start_attack({
-			"anim": "katana_slash",
-			"hitbox_name": "WeaponHitbox",
-			"damage": 22.0,
-			"startup_f": 8, "active_f": 4, "recovery_f": 11,
-			"knockback": Vector2(160, -40),
-			"target_zone": DamageCalculator.HitZone.TORSO,
-			"is_knockdown": false
-		})
-		return true
+		# Neutral Weapon: Katana Quick Draw
+		if Input.is_action_just_pressed(prefix + "weapon"):
+			_start_attack({
+				"anim": "katana_slash",
+				"hitbox_name": "WeaponHitbox",
+				"damage": 22.0,
+				"startup_f": 8, "active_f": 4, "recovery_f": 11,
+				"knockback": Vector2(160, -40),
+				"target_zone": DamageCalculator.HitZone.TORSO,
+				"is_knockdown": false
+			})
+			return true
 
 	# Forward + Kick: Roundhouse Kick
 	if forward_held and Input.is_action_just_pressed(prefix + "kick"):

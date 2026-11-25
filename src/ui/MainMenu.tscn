@@ -1,0 +1,145 @@
+[gd_scene load_steps=3 format=3 uid="uid://b00g7q9m3x5k1"]
+
+[ext_resource type="Script" path="res://src/ui/MainMenu.gd" id="1_menu_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.08, 0.08, 0.12, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.85, 0.25, 0.25, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_menu_script")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.06, 0.06, 0.08, 1)
+
+[node name="MoonGraphic" type="Polygon2D" parent="."]
+position = Vector2(640, 260)
+color = Color(0.75, 0.15, 0.15, 0.85)
+polygon = PackedVector2Array(0, -110, 78, -78, 110, 0, 78, 78, 0, 110, -78, 78, -110, 0, -78, -78)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 64
+theme_override_constants/margin_top = 64
+theme_override_constants/margin_right = 64
+theme_override_constants/margin_bottom = 64
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="Title" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.95, 0.98, 1)
+theme_override_colors/font_shadow_color = Color(0.8, 0.1, 0.1, 0.6)
+theme_override_constants/shadow_offset_x = 4
+theme_override_constants/shadow_offset_y = 4
+theme_override_font_sizes/font_size = 64
+text = "SHADOW RONIN"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.7, 0.75, 1)
+theme_override_font_sizes/font_size = 20
+text = "A Physics-Driven Martial Arts Fighting Game"
+horizontal_alignment = 1
+
+[node name="ButtonContainer" type="VBoxContainer" parent="Margin/VBox"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 14
+
+[node name="PlayBtn" type="Button" parent="Margin/VBox/ButtonContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "⚔️ DUEL ENEMY AI"
+
+[node name="ControlsBtn" type="Button" parent="Margin/VBox/ButtonContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "📜 CONTROLS & WEAPONS"
+
+[node name="QuitBtn" type="Button" parent="Margin/VBox/ButtonContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "EXIT"
+
+[node name="ControlsModal" type="PanelContainer" parent="Margin"]
+visible = false
+custom_minimum_size = Vector2(560, 420)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="Margin" type="MarginContainer" parent="Margin/ControlsModal"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="Margin/ControlsModal/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Margin/ControlsModal/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "MARTIAL ARTS CONTROLS"
+horizontal_alignment = 1
+
+[node name="Text" type="RichTextLabel" parent="Margin/ControlsModal/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+text = "[b]Movement:[/b] A / D (or Left / Right Arrow)
+[b]Jump:[/b] W (or Up Arrow)
+[b]Crouch / Sweep Stance:[/b] S (or Down Arrow)
+[b]Punch:[/b] J (Jab / Straight Punch)
+[b]Kick:[/b] K (Roundhouse / Low Shin / Sweep)
+[b]Weapon Slash:[/b] L (Katana / Naginata)
+[b]Block:[/b] I (or hold direction opposite to opponent)
+[b]Weapon Select:[/b] 1 (Bare Hands), 2 (Katana), 3 (Naginata)"
+
+[node name="CloseBtn" type="Button" parent="Margin/ControlsModal/Margin/VBox"]
+custom_minimum_size = Vector2(160, 38)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "CLOSE"
+
+[connection signal="pressed" from="Margin/VBox/ButtonContainer/PlayBtn" to="." method="_on_play_ai_pressed"]
+[connection signal="pressed" from="Margin/VBox/ButtonContainer/ControlsBtn" to="." method="_on_controls_pressed"]
+[connection signal="pressed" from="Margin/VBox/ButtonContainer/QuitBtn" to="." method="_on_quit_pressed"]
+[connection signal="pressed" from="Margin/ControlsModal/Margin/VBox/CloseBtn" to="." method="_on_close_controls_pressed"]

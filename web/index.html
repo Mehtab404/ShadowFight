@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow Ronin — Playable Web Prototype</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: #08080c;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    #game-container {
+      position: relative;
+      width: 1100px;
+      height: 620px;
+      background: #0a0812;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(185, 28, 28, 0.2);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #ui-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 30px;
+    }
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .fighter-hud {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .hud-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .p2-title { justify-content: flex-end; }
+    .health-bar-bg {
+      position: relative;
+      height: 22px;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .health-trail {
+      position: absolute;
+      top: 0; height: 100%;
+      background: #f59e0b;
+      transition: width 0.45s ease-out;
+    }
+    .health-fill {
+      position: absolute;
+      top: 0; height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      transition: width 0.1s linear;
+    }
+    .p1-bar .health-fill, .p1-bar .health-trail { left: 0; }
+    .p2-bar .health-fill, .p2-bar .health-trail { right: 0; }
+    .p2-bar .health-fill { background: linear-gradient(90deg, #dc2626, #ef4444); }
+    .timer-box {
+      width: 70px;
+      text-align: center;
+      font-size: 32px;
+      font-weight: 900;
+      color: #f8fafc;
+      text-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+    }
+    #announcement {
+      position: absolute;
+      top: 45%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-align: center;
+      color: #ffffff;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.9), 0 0 30px rgba(220, 38, 38, 0.7);
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    #combo-badge {
+      position: absolute;
+      top: 100px; left: 40px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #fbbf24;
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+      opacity: 0;
+      transition: transform 0.15s, opacity 0.2s;
+    }
+    #controls-hint {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #94a3b8;
+      display: flex;
+      gap: 20px;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .key-badge {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-weight: 700;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="1100" height="620"></canvas>
+    
+    <div id="ui-overlay">
+      <div class="top-bar">
+        <div class="fighter-hud">
+          <div class="hud-title"><span style="color:#ef4444">⚔️</span> SHADOW RONIN <span id="p1-weapon-tag" style="font-size:11px; color:#94a3b8;">[KATANA]</span></div>
+          <div class="health-bar-bg p1-bar">
+            <div id="p1-trail" class="health-trail" style="width: 100%;"></div>
+            <div id="p1-fill" class="health-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <div id="timer" class="timer-box">99</div>
+
+        <div class="fighter-hud">
+          <div class="hud-title p2-title"><span id="p2-weapon-tag" style="font-size:11px; color:#94a3b8;">[KATANA]</span> SHADOW BOT <span>👹</span></div>
+          <div class="health-bar-bg p2-bar">
+            <div id="p2-trail" class="health-trail" style="width: 100%;"></div>
+            <div id="p2-fill" class="health-fill" style="width: 100%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="combo-badge">3 HITS!</div>
+      <div id="announcement">ROUND 1</div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; color:#64748b; font-size:12px;">
+        <div>SHADOW FIGHT 2 PHYSICS COMBAT ENGINE</div>
+        <div>PRESS <span class="key-badge">1</span> BARE HANDS | <span class="key-badge">2</span> KATANA | <span class="key-badge">3</span> NAGINATA</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls-hint">
+    <span>Move: <span class="key-badge">A</span> <span class="key-badge">D</span></span>
+    <span>Jump: <span class="key-badge">W</span></span>
+    <span>Crouch: <span class="key-badge">S</span></span>
+    <span>Punch: <span class="key-badge">J</span></span>
+    <span>Kick: <span class="key-badge">K</span></span>
+    <span>Weapon: <span class="key-badge">L</span></span>
+    <span>Block: <span class="key-badge">I</span> / Back</span>
+    <span>Restart: <span class="key-badge">R</span></span>
+  </div>
+
+  <script>
+    // --- AUDIO SYNTHESIZER ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    window.addEventListener('keydown', initAudio, { once: true });
+    window.addEventListener('click', initAudio, { once: true });
+
+    function playSynthSound(freq, duration, type = 'sine', sweep = 0) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      if (sweep !== 0) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(10, freq + sweep), audioCtx.currentTime + duration);
+      }
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+    const SFX = {
+      whoosh: () => playSynthSound(180, 0.12, 'triangle', -90),
+      slash: () => playSynthSound(480, 0.16, 'sawtooth', -300),
+      punch: () => playSynthSound(110, 0.18, 'sine', -70),
+      kick: () => playSynthSound(85, 0.22, 'sine', -55),
+      block: () => playSynthSound(680, 0.09, 'square', -400),
+      knockdown: () => playSynthSound(70, 0.45, 'triangle', -45),
+    };
+
+    // --- GAME ENGINE SETUP ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const WIDTH = 1100, HEIGHT = 620, GROUND_Y = 510;
+
+    const KEYS = {};
+    window.addEventListener('keydown', e => {
+      KEYS[e.key.toLowerCase()] = true;
+      if (e.key === '1') p1.setWeapon('bare');
+      if (e.key === '2') p1.setWeapon('katana');
+      if (e.key === '3') p1.setWeapon('naginata');
+      if (e.key === 'r' || e.key === 'R') resetMatch();
+    });
+    window.addEventListener('keyup', e => KEYS[e.key.toLowerCase()] = false);
+
+    // --- DAMAGE FORMULA ---
+    // D_final = D_base * M_zone * max(0.3, 1 - 0.1*(C - 1))
+    function calculateDamage(base, zone, combo) {
+      const zoneMult = zone === 'head' ? 1.5 : (zone === 'legs' ? 0.8 : 1.0);
+      const scaling = Math.max(0.3, 1.0 - 0.1 * (combo - 1));
+      return Math.round(base * zoneMult * scaling);
+    }
+
+    // --- PARTICLES ---
+    const particles = [];
+    function spawnSparks(x, y, count = 16, color = '#fbbf24') {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 8;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.5,
+          color,
+          life: 1.0,
+          decay: 0.03 + Math.random() * 0.05,
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+    // Atmospheric falling sakura leaves
+    const leaves = [];
+    for (let i = 0; i < 40; i++) {
+      leaves.push({
+        x: Math.random() * WIDTH,
+        y: Math.random() * HEIGHT,
+        vx: 0.8 + Math.random() * 1.2,
+        vy: 1.2 + Math.random() * 1.5,
+        rot: Math.random() * Math.PI,
+        vrot: (Math.random() - 0.5) * 0.05,
+        size: 3 + Math.random() * 3
+      });
+    }
+
+    // --- FIGHTER CLASS ---
+    class Fighter {
+      constructor(x, facing, isAI = false, name = "Ronin") {
+        this.x = x;
+        this.y = GROUND_Y;
+        this.vx = 0;
+        this.vy = 0;
+        this.facing = facing; // 1 = right, -1 = left
+        this.isAI = isAI;
+        this.name = name;
+        this.health = 100;
+        this.maxHealth = 100;
+        this.weapon = 'katana';
+        this.state = 'idle'; // idle, move, jump, crouch, attack, hitstun, blockstun, knockdown, getup
+        this.stateTimer = 0;
+        this.combo = 0;
+        this.comboTimer = 0;
+        this.invulnerable = false;
+        this.attackPhase = ''; // startup, active, recovery
+        this.currentMove = null;
+        this.hasHit = false;
+        this.aiDecisionTimer = 0;
+      }
+
+      setWeapon(w) {
+        this.weapon = w;
+        if (!this.isAI) {
+          document.getElementById('p1-weapon-tag').innerText = `[${w.toUpperCase()}]`;
+        } else {
+          document.getElementById('p2-weapon-tag').innerText = `[${w.toUpperCase()}]`;
+        }
+      }
+
+      update(opponent) {
+        // Combo decay
+        if (this.combo > 0) {
+          this.comboTimer -= 1 / 60;
+          if (this.comboTimer <= 0) this.combo = 0;
+        }
+
+        // Gravity & Ground
+        this.vy += 28 * (1/60) * 60;
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.y >= GROUND_Y) {
+          this.y = GROUND_Y;
+          this.vy = 0;
+        }
+
+        // Friction
+        if (this.state !== 'move') {
+          this.vx *= 0.82;
+        }
+
+        // Auto-facing
+        if (this.state === 'idle' || this.state === 'move' || this.state === 'crouch') {
+          this.facing = (opponent.x > this.x) ? 1 : -1;
+        }
+
+        // State Machine Update
+        if (this.isAI) this.updateAI(opponent);
+        else this.handlePlayerInput(opponent);
+
+        this.processState(opponent);
+
+        // Stage bounds
+        this.x = Math.max(60, Math.min(WIDTH - 60, this.x));
+      }
+
+      handlePlayerInput(opponent) {
+        if (this.state !== 'idle' && this.state !== 'move' && this.state !== 'crouch') return;
+
+        const left = KEYS['a'] || KEYS['arrowleft'];
+        const right = KEYS['d'] || KEYS['arrowright'];
+        const up = KEYS['w'] || KEYS['arrowup'];
+        const down = KEYS['s'] || KEYS['arrowdown'];
+        const punch = KEYS['j'];
+        const kick = KEYS['k'];
+        const weaponBtn = KEYS['l'];
+
+        // Jump
+        if (up && this.y >= GROUND_Y) {
+          this.state = 'jump';
+          this.vy = -14;
+          this.vx = (right ? 4 : (left ? -4 : 0));
+          return;
+        }
+
+        // Crouch
+        if (down && this.y >= GROUND_Y) {
+          this.state = 'crouch';
+          if (kick) {
+            this.startAttack(this.getMoveData('sweep'));
+            KEYS['k'] = false;
+          }
+          return;
+        }
+
+        // Attacks
+        const forwardHeld = (this.facing === 1 && right) || (this.facing === -1 && left);
+        if (weaponBtn) {
+          KEYS['l'] = false;
+          if (up) this.startAttack(this.getMoveData('overhead'));
+          else if (forwardHeld) this.startAttack(this.getMoveData('thrust'));
+          else this.startAttack(this.getMoveData('slash'));
+          return;
+        }
+        if (kick) {
+          KEYS['k'] = false;
+          if (forwardHeld) this.startAttack(this.getMoveData('roundhouse'));
+          else this.startAttack(this.getMoveData('low_kick'));
+          return;
+        }
+        if (punch) {
+          KEYS['j'] = false;
+          if (forwardHeld) this.startAttack(this.getMoveData('straight'));
+          else this.startAttack(this.getMoveData('jab'));
+          return;
+        }
+
+        // Move
+        if (left || right) {
+          this.state = 'move';
+          const movingForward = (this.facing === 1 && right) || (this.facing === -1 && left);
+          const speed = movingForward ? 4.5 : 3.2;
+          this.vx = (right ? speed : -speed);
+        } else {
+          this.state = 'idle';
+        }
+      }
+
+      updateAI(opponent) {
+        this.aiDecisionTimer -= 1/60;
+        const dist = Math.abs(opponent.x - this.x);
+
+        if (this.aiDecisionTimer <= 0 && (this.state === 'idle' || this.state === 'move')) {
+          this.aiDecisionTimer = 0.15 + Math.random() * 0.2;
+          const oppAttacking = opponent.state === 'attack';
+
+          // Reactive block
+          if (oppAttacking && dist < 180 && Math.random() < 0.75) {
+            this.state = 'move';
+            this.vx = (this.facing === 1 ? -3 : 3); // Hold back to block
+            return;
+          }
+
+          if (dist > 250) {
+            // Advance
+            this.state = 'move';
+            this.vx = (this.facing === 1 ? 4 : -4);
+          } else if (dist < 100) {
+            // Close quarters mixup
+            const r = Math.random();
+            if (r < 0.35) {
+              this.vx = (this.facing === 1 ? -3.5 : 3.5); // Back dash
+            } else if (r < 0.70) {
+              this.startAttack(this.getMoveData('sweep'));
+            } else {
+              this.startAttack(this.getMoveData('jab'));
+            }
+          } else {
+            // Mid range
+            const r = Math.random();
+            if (r < 0.4) this.startAttack(this.getMoveData('thrust'));
+            else if (r < 0.7) this.startAttack(this.getMoveData('roundhouse'));
+            else this.vx = 0;
+          }
+        }
+      }
+
+      getMoveData(type) {
+        const weaponMult = (this.weapon === 'naginata') ? 1.3 : (this.weapon === 'bare' ? 0.85 : 1.15);
+        const moves = {
+          jab: { name: 'Quick Jab', base: 12, startup: 6, active: 3, recovery: 8, zone: 'head', reach: 65, knock: 3, sfx: 'punch' },
+          straight: { name: 'Straight Punch', base: 18, startup: 9, active: 4, recovery: 12, zone: 'torso', reach: 80, knock: 5, sfx: 'punch' },
+          low_kick: { name: 'Low Kick', base: 14, startup: 7, active: 3, recovery: 10, zone: 'legs', reach: 75, knock: 4, sfx: 'kick' },
+          roundhouse: { name: 'Roundhouse Kick', base: 28, startup: 12, active: 5, recovery: 14, zone: 'head', reach: 95, knock: 10, knockdown: true, sfx: 'kick' },
+          sweep: { name: 'Low Sweep', base: 20, startup: 10, active: 4, recovery: 15, zone: 'legs', reach: 85, knock: 8, knockdown: true, sfx: 'kick' },
+          slash: { name: 'Katana Slash', base: 24 * weaponMult, startup: 8, active: 4, recovery: 11, zone: 'torso', reach: (this.weapon === 'naginata' ? 140 : 105), knock: 6, sfx: 'slash' },
+          thrust: { name: 'Mid Thrust', base: 30 * weaponMult, startup: 13, active: 4, recovery: 16, zone: 'torso', reach: (this.weapon === 'naginata' ? 165 : 120), knock: 8, sfx: 'slash' },
+          overhead: { name: 'Overhead Slash', base: 42 * weaponMult, startup: 16, active: 6, recovery: 18, zone: 'head', reach: (this.weapon === 'naginata' ? 150 : 110), knock: 12, knockdown: true, sfx: 'slash' }
+        };
+        return moves[type] || moves.jab;
+      }
+
+      startAttack(move) {
+        this.state = 'attack';
+        this.currentMove = move;
+        this.attackPhase = 'startup';
+        this.stateTimer = move.startup;
+        this.hasHit = false;
+        this.vx = this.facing * 2.5;
+        SFX.whoosh();
+      }
+
+      processState(opponent) {
+        if (this.state === 'attack') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            if (this.attackPhase === 'startup') {
+              this.attackPhase = 'active';
+              this.stateTimer = this.currentMove.active;
+            } else if (this.attackPhase === 'active') {
+              this.attackPhase = 'recovery';
+              this.stateTimer = this.currentMove.recovery;
+            } else {
+              this.state = 'idle';
+              this.currentMove = null;
+            }
+          }
+
+          // Hitbox check during active phase
+          if (this.attackPhase === 'active' && !this.hasHit) {
+            const hitReach = this.currentMove.reach;
+            const hitZone = this.currentMove.zone;
+            const dist = Math.abs(this.x - opponent.x);
+            const inFront = (this.facing === 1 && opponent.x > this.x) || (this.facing === -1 && opponent.x < this.x);
+
+            if (inFront && dist < hitReach) {
+              this.hasHit = true;
+              opponent.receiveHit(this, this.currentMove);
+            }
+          }
+        } else if (this.state === 'hitstun' || this.state === 'blockstun') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) this.state = 'idle';
+        } else if (this.state === 'knockdown') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0 && this.y >= GROUND_Y) {
+            this.state = 'getup';
+            this.stateTimer = 25;
+            this.invulnerable = true;
+          }
+        } else if (this.state === 'getup') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            this.state = 'idle';
+            this.invulnerable = false;
+          }
+        }
+      }
+
+      isHoldingBlock(attacker) {
+        if (!this.isAI) {
+          if (KEYS['i']) return true;
+          const left = KEYS['a'] || KEYS['arrowleft'];
+          const right = KEYS['d'] || KEYS['arrowright'];
+          if (this.facing === 1 && left) return true;
+          if (this.facing === -1 && right) return true;
+          return false;
+        } else {
+          // AI block check
+          return (this.facing === 1 && this.vx < 0) || (this.facing === -1 && this.vx > 0);
+        }
+      }
+
+      receiveHit(attacker, move) {
+        if (this.invulnerable || this.health <= 0) return;
+
+        const isBlocked = this.isHoldingBlock(attacker) && !move.knockdown;
+        const hitX = (this.x + attacker.x) * 0.5;
+        const hitY = this.y - (move.zone === 'head' ? 95 : (move.zone === 'legs' ? 25 : 60));
+
+        if (isBlocked) {
+          // Block Stun
+          SFX.block();
+          spawnSparks(hitX, hitY, 12, '#38bdf8');
+          const chip = Math.max(1, Math.round(move.base * 0.15));
+          this.health = Math.max(0, this.health - chip);
+          this.state = 'blockstun';
+          this.stateTimer = 14;
+          this.vx = attacker.facing * 4;
+          triggerHitstop(3);
+          updateHealthUI();
+          return;
+        }
+
+        // Clean Hit
+        attacker.combo++;
+        attacker.comboTimer = 1.3;
+        showCombo(attacker.name, attacker.combo);
+
+        const dmg = calculateDamage(move.base, move.zone, attacker.combo);
+        this.health = Math.max(0, this.health - dmg);
+        updateHealthUI();
+
+        // Sound & Sparks
+        if (SFX[move.sfx]) SFX[move.sfx]();
+        spawnSparks(hitX, hitY, 24, '#fbbf24');
+        triggerHitstop(move.knockdown ? 8 : 5);
+
+        if (this.health <= 0) {
+          SFX.knockdown();
+          this.state = 'knockdown';
+          this.stateTimer = 90;
+          this.vx = attacker.facing * 7;
+          this.vy = -8;
+          onKnockout(attacker);
+          return;
+        }
+
+        if (move.knockdown) {
+          SFX.knockdown();
+          this.state = 'knockdown';
+          this.stateTimer = 50;
+          this.vx = attacker.facing * (move.knock || 6);
+          this.vy = -6;
+        } else {
+          this.state = 'hitstun';
+          this.stateTimer = 20;
+          this.vx = attacker.facing * (move.knock || 3);
+        }
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.facing, 1);
+
+        // Rim light / Glow effect
+        ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.6)' : 'rgba(56, 189, 248, 0.6)');
+        ctx.shadowBlur = (this.state === 'attack' && this.attackPhase === 'active') ? 18 : 6;
+
+        ctx.fillStyle = '#060609'; // Silhouette black
+        ctx.strokeStyle = '#060609';
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+
+        // Draw Skeletal Limbs based on pose/state
+        const isCrouch = (this.state === 'crouch');
+        const isHit = (this.state === 'hitstun' || this.state === 'blockstun');
+        const isDown = (this.state === 'knockdown');
+
+        if (isDown) {
+          // Fallen on ground pose
+          ctx.beginPath();
+          ctx.arc(40, -15, 14, 0, Math.PI * 2); // Head
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(30, -15); ctx.lineTo(-20, -10); // Torso
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(-20, -10); ctx.lineTo(-50, -5); // Legs
+          ctx.stroke();
+          ctx.restore();
+          return;
+        }
+
+        const headY = isCrouch ? -65 : -95;
+        const torsoTopY = isCrouch ? -50 : -80;
+        const hipY = isCrouch ? -25 : -40;
+
+        // Head
+        ctx.beginPath();
+        ctx.arc(0, headY, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Torso
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(0, torsoTopY);
+        ctx.lineTo(0, hipY);
+        ctx.stroke();
+
+        // Legs
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        if (isCrouch) {
+          ctx.moveTo(0, hipY); ctx.lineTo(15, -15); ctx.lineTo(20, 0); // Front leg
+          ctx.moveTo(0, hipY); ctx.lineTo(-20, -10); ctx.lineTo(-25, 0); // Back leg
+        } else {
+          const walkPhase = Math.sin(Date.now() * 0.015) * (this.state === 'move' ? 18 : 3);
+          ctx.moveTo(0, hipY); ctx.lineTo(10 + walkPhase, -20); ctx.lineTo(12 + walkPhase * 0.5, 0);
+          ctx.moveTo(0, hipY); ctx.lineTo(-10 - walkPhase, -20); ctx.lineTo(-12 - walkPhase * 0.5, 0);
+        }
+        ctx.stroke();
+
+        // Arms & Weapon
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        if (this.state === 'attack') {
+          // Dynamic Strike Pose
+          const reachProgress = (this.attackPhase === 'active') ? 1.0 : (this.attackPhase === 'startup' ? 0.3 : 0.6);
+          const reachX = 25 + reachProgress * 35;
+          const reachY = torsoTopY + 10;
+          ctx.moveTo(0, torsoTopY + 5);
+          ctx.lineTo(reachX * 0.5, reachY - 10);
+          ctx.lineTo(reachX, reachY);
+          ctx.stroke();
+
+          // Weapon blade
+          if (this.weapon !== 'bare') {
+            const bladeLen = (this.weapon === 'naginata') ? 85 : 55;
+            ctx.strokeStyle = (this.weapon === 'naginata' ? '#f59e0b' : '#e2e8f0');
+            ctx.lineWidth = (this.weapon === 'naginata' ? 5 : 4);
+            ctx.beginPath();
+            ctx.moveTo(reachX, reachY);
+            ctx.lineTo(reachX + bladeLen, reachY - 10);
+            ctx.stroke();
+
+            // Slash Arc visual
+            if (this.attackPhase === 'active') {
+              ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
+              ctx.lineWidth = 16;
+              ctx.beginPath();
+              ctx.arc(reachX - 20, reachY, bladeLen, -0.4, 0.4);
+              ctx.stroke();
+            }
+          }
+        } else if (this.state === 'blockstun') {
+          // Cross arm block pose
+          ctx.moveTo(0, torsoTopY + 5); ctx.lineTo(15, torsoTopY - 5); ctx.lineTo(12, torsoTopY + 15);
+          ctx.stroke();
+        } else {
+          // Neutral Guard Pose
+          ctx.moveTo(0, torsoTopY + 5); ctx.lineTo(18, torsoTopY + 15); ctx.lineTo(24, torsoTopY + 5);
+          ctx.stroke();
+
+          // Sheathed/Held Weapon
+          if (this.weapon !== 'bare') {
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(24, torsoTopY + 5);
+            ctx.lineTo(45, torsoTopY - 25);
+            ctx.stroke();
+          }
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // --- INITIALIZE FIGHTERS & MATCH ---
+    const p1 = new Fighter(360, 1, false, "Shadow Ronin");
+    const p2 = new Fighter(740, -1, true, "Shadow Bot");
+
+    let matchTimer = 99;
+    let timerInterval = setInterval(() => {
+      if (matchTimer > 0) {
+        matchTimer--;
+        document.getElementById('timer').innerText = matchTimer;
+      }
+    }, 1000);
+
+    let hitstopRemaining = 0;
+    function triggerHitstop(frames) {
+      hitstopRemaining = frames;
+    }
+
+    function updateHealthUI() {
+      const p1Pct = (p1.health / p1.maxHealth) * 100;
+      const p2Pct = (p2.health / p2.maxHealth) * 100;
+      document.getElementById('p1-fill').style.width = p1Pct + '%';
+      document.getElementById('p1-trail').style.width = p1Pct + '%';
+      document.getElementById('p2-fill').style.width = p2Pct + '%';
+      document.getElementById('p2-trail').style.width = p2Pct + '%';
+    }
+
+    function showCombo(name, count) {
+      const el = document.getElementById('combo-badge');
+      if (count >= 2) {
+        el.innerText = `${name.toUpperCase()}\n${count} HITS!`;
+        el.style.opacity = '1';
+        el.style.transform = 'scale(1.25)';
+        setTimeout(() => el.style.transform = 'scale(1.0)', 150);
+      } else {
+        el.style.opacity = '0';
+      }
+    }
+
+    function announce(txt, duration = 1600) {
+      const el = document.getElementById('announcement');
+      el.innerText = txt;
+      el.style.opacity = '1';
+      el.style.transform = 'translate(-50%, -50%) scale(1.15)';
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translate(-50%, -50%) scale(0.9)';
+      }, duration);
+    }
+
+    function onKnockout(winner) {
+      announce(`K.O.!\n${winner.name.toUpperCase()} WINS`, 3500);
+    }
+
+    function resetMatch() {
+      p1.health = 100; p1.x = 360; p1.state = 'idle'; p1.combo = 0;
+      p2.health = 100; p2.x = 740; p2.state = 'idle'; p2.combo = 0;
+      matchTimer = 99;
+      updateHealthUI();
+      announce("ROUND 1\nFIGHT!", 1800);
+    }
+
+    // --- GAME LOOP ---
+    announce("ROUND 1\nFIGHT!", 2000);
+
+    function loop() {
+      requestAnimationFrame(loop);
+
+      // Hitstop Impact Freeze
+      if (hitstopRemaining > 0) {
+        hitstopRemaining--;
+        return;
+      }
+
+      // 1. UPDATE
+      p1.update(p2);
+      p2.update(p1);
+
+      // Pushbox collision (cannot walk through each other)
+      const dist = Math.abs(p1.x - p2.x);
+      if (dist < 46) {
+        const overlap = (46 - dist) * 0.5;
+        if (p1.x < p2.x) { p1.x -= overlap; p2.x += overlap; }
+        else { p1.x += overlap; p2.x -= overlap; }
+      }
+
+      // Update particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        p.life -= p.decay;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+      for (const l of leaves) {
+        l.x += l.vx; l.y += l.vy;
+        l.rot += l.vrot;
+        if (l.y > HEIGHT) { l.y = -10; l.x = Math.random() * WIDTH; }
+        if (l.x > WIDTH) l.x = 0;
+      }
+
+      // 2. RENDER PARALLAX BACKGROUND
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+      // Sky Gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+      skyGrad.addColorStop(0, '#100a1c');
+      skyGrad.addColorStop(0.7, '#24101e');
+      skyGrad.addColorStop(1, '#0b0811');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // Giant Blood Red Moon
+      ctx.fillStyle = '#b91c1c';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 40;
+      ctx.beginPath();
+      ctx.arc(WIDTH * 0.5, 210, 85, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Distant Mountain Silhouettes
+      ctx.fillStyle = '#09060d';
+      ctx.beginPath();
+      ctx.moveTo(0, HEIGHT);
+      ctx.lineTo(0, 360);
+      ctx.lineTo(240, 260);
+      ctx.lineTo(480, 380);
+      ctx.lineTo(760, 240);
+      ctx.lineTo(WIDTH, 340);
+      ctx.lineTo(WIDTH, HEIGHT);
+      ctx.fill();
+
+      // Atmospheric Bamboo Silhouettes
+      ctx.fillStyle = '#050308';
+      const bambooStalks = [120, 180, 240, 820, 890, 960];
+      for (const bx of bambooStalks) {
+        ctx.fillRect(bx, 120, 16, HEIGHT);
+      }
+
+      // Ground Stage Floor
+      ctx.fillStyle = '#040306';
+      ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y);
+      ctx.lineTo(WIDTH, GROUND_Y);
+      ctx.stroke();
+
+      // 3. RENDER ATMOSPHERIC LEAVES
+      ctx.fillStyle = 'rgba(244, 114, 182, 0.6)';
+      for (const l of leaves) {
+        ctx.save();
+        ctx.translate(l.x, l.y);
+        ctx.rotate(l.rot);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, l.size, l.size * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 4. RENDER FIGHTERS
+      p1.draw();
+      p2.draw();
+
+      // 5. RENDER HIT PARTICLES
+      for (const p of particles) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+    }
+
+    loop();
+  </script>
+</body>
+</html>

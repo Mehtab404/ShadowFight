@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://b1tq7m8w9y2xp"]
+
+[node name="AtmosphericParticles" type="CPUParticles2D"]
+position = Vector2(0, -450)
+amount = 45
+lifetime = 6.0
+preprocess = 3.0
+emission_shape = 3
+emission_rect_extents = Vector2(800, 30)
+direction = Vector2(0.8, 1.0)
+spread = 25.0
+gravity = Vector2(40, 60)
+initial_velocity_min = 60.0
+initial_velocity_max = 130.0
+angular_velocity_min = -60.0
+angular_velocity_max = 60.0
+scale_amount_min = 3.0
+scale_amount_max = 7.0
+color = Color(0.9, 0.45, 0.55, 0.75)

@@ -5,6 +5,8 @@
 [ext_resource type="PackedScene" path="res://src/characters/AIFighter.tscn" id="3_ai_fighter"]
 [ext_resource type="Script" path="res://src/arena/CameraController.gd" id="4_camera_script"]
 [ext_resource type="PackedScene" path="res://src/ui/HUD.tscn" id="5_hud_scene"]
+[ext_resource type="PackedScene" path="res://src/ui/PauseMenu.tscn" id="5_pause_scene"]
+[ext_resource type="PackedScene" path="res://src/vfx/AtmosphericParticles.tscn" id="6_particles_scene"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_floor"]
 size = Vector2(1600, 80)
@@ -107,3 +109,7 @@ p1 = NodePath("../Fighters/PlayerFighter")
 p2 = NodePath("../Fighters/AIFighter")
 
 [node name="HUD" parent="." instance=ExtResource("5_hud_scene")]
+
+[node name="PauseMenu" parent="." instance=ExtResource("5_pause_scene")]
+
+[node name="AtmosphericParticles" parent="." instance=ExtResource("6_particles_scene")]

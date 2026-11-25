@@ -17,6 +17,7 @@ var is_invulnerable: bool = false
 var combo_count: int = 0
 var combo_timer: float = 0.0
 const COMBO_RESET_WINDOW: float = 1.2
+var current_weapon: WeaponData = null
 
 @onready var state_machine: StateMachine = $StateMachine
 @onready var visual_root: Node2D = $VisualRoot
@@ -24,12 +25,32 @@ const COMBO_RESET_WINDOW: float = 1.2
 @onready var hurtbox_head: Hurtbox = $VisualRoot/HurtboxHead
 @onready var hurtbox_torso: Hurtbox = $VisualRoot/HurtboxTorso
 @onready var hurtbox_legs: Hurtbox = $VisualRoot/HurtboxLegs
+@onready var katana_blade: Line2D = $VisualRoot/KatanaBlade
+@onready var weapon_hitbox: Hitbox = $VisualRoot/WeaponHitbox
 
 func _ready() -> void:
 	health = max_health
+	if current_weapon == null:
+		equip_weapon(WeaponData.create_katana())
 	if state_machine != null:
 		state_machine.init(self)
 	health_changed.emit(health, max_health)
+
+func equip_weapon(weapon: WeaponData) -> void:
+	current_weapon = weapon
+	if katana_blade != null:
+		if weapon.weapon_type == WeaponData.WeaponType.BARE_HANDS:
+			katana_blade.visible = false
+		elif weapon.weapon_type == WeaponData.WeaponType.KATANA:
+			katana_blade.visible = true
+			katana_blade.points = PackedVector2Array([Vector2(0, 0), Vector2(28, -24), Vector2(52, -44)])
+			katana_blade.default_color = weapon.weapon_color
+			katana_blade.width = 4.0
+		elif weapon.weapon_type == WeaponData.WeaponType.NAGINATA:
+			katana_blade.visible = true
+			katana_blade.points = PackedVector2Array([Vector2(-15, 10), Vector2(35, -25), Vector2(85, -60)])
+			katana_blade.default_color = weapon.weapon_color
+			katana_blade.width = 5.0
 
 func _physics_process(delta: float) -> void:
 	if combo_count > 0:
@@ -124,6 +145,9 @@ func take_hit(hitbox: Hitbox, zone: DamageCalculator.HitZone) -> void:
 		AudioManager.play_punch_impact(1.0)
 		
 	HitstopManager.trigger_hitstop(hitbox.hitstop_frames, 6.0 if not hitbox.is_knockdown else 10.0)
+	
+	if get_parent() != null:
+		HitSparks.spawn_at(get_parent(), global_position + Vector2(0, -50), true)
 	
 	if health <= 0.0:
 		defeated.emit()

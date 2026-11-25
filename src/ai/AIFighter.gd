@@ -21,6 +21,12 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 func _ready() -> void:
 	rng.randomize()
+	# Randomize AI weapon choice for variety
+	var choice = rng.randi_range(0, 2)
+	match choice:
+		0: equip_weapon(WeaponData.create_bare_hands())
+		1: equip_weapon(WeaponData.create_katana())
+		2: equip_weapon(WeaponData.create_naginata())
 	super._ready()
 
 func _physics_process(delta: float) -> void:

@@ -1,0 +1,21 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8x4v01u7p2qw"]
+
+[ext_resource type="Script" path="res://src/vfx/HitSparks.gd" id="1_sparks_script"]
+
+[node name="HitSparks" type="CPUParticles2D"]
+emitting = false
+amount = 22
+lifetime = 0.35
+one_shot = true
+explosiveness = 0.92
+lifetime_randomness = 0.3
+spread = 180.0
+gravity = Vector2(0, 350)
+initial_velocity_min = 180.0
+initial_velocity_max = 320.0
+angular_velocity_min = -180.0
+angular_velocity_max = 180.0
+scale_amount_min = 3.0
+scale_amount_max = 6.0
+color = Color(1, 0.82, 0.28, 1)
+script = ExtResource("1_sparks_script")

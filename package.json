@@ -1,0 +1,21 @@
+{
+  "name": "shadow-ronin",
+  "version": "0.1.0",
+  "description": "2D physics-driven, silhouette-styled martial arts fighting game inspired by Shadow Fight 2",
+  "main": "web/index.html",
+  "scripts": {
+    "start": "npx serve web -p 3000",
+    "godot": "tools\\godot\\Godot_v4.3-stable_win64.exe --path .",
+    "godot:console": "tools\\godot\\Godot_v4.3-stable_win64_console.exe --path .",
+    "validate": "tools\\godot\\Godot_v4.3-stable_win64_console.exe --headless --path . --check-only --quit"
+  },
+  "keywords": [
+    "fighting-game",
+    "godot4",
+    "shadow-fight",
+    "fsm",
+    "martial-arts"
+  ],
+  "author": "Mehtab Alam",
+  "license": "MIT"
+}
