@@ -18,6 +18,9 @@ var combo_count: int = 0
 var combo_timer: float = 0.0
 const COMBO_RESET_WINDOW: float = 1.2
 var current_weapon: WeaponData = null
+var time_alive: float = 0.0
+var base_torso_pos_y: float = -64.0
+var base_head_pos_y: float = -100.0
 
 @onready var state_machine: StateMachine = $StateMachine
 @onready var visual_root: Node2D = $VisualRoot
@@ -62,8 +65,38 @@ func _physics_process(delta: float) -> void:
 		state_machine.physics_update(delta)
 
 func _process(delta: float) -> void:
+	time_alive += delta
+	_update_procedural_motion(delta)
 	if state_machine != null:
 		state_machine.update(delta)
+
+func _update_procedural_motion(delta: float) -> void:
+	if visual_root == null:
+		return
+		
+	# 1. Smooth facing direction flip (eliminates 1-frame pop)
+	visual_root.scale.x = move_toward(visual_root.scale.x, float(facing_direction), 16.0 * delta)
+	
+	# 2. Dynamic Torso lean into velocity
+	var target_lean = clampf((velocity.x * float(facing_direction)) * 0.0007, -0.14, 0.22)
+	visual_root.rotation = lerpf(visual_root.rotation, target_lean, 10.0 * delta)
+	
+	# 3. Organic breathing & stride bobbing
+	var is_idle = state_machine != null and state_machine.current_state is IdleState
+	var is_moving = state_machine != null and state_machine.current_state is MoveState
+	
+	var bob: float = 0.0
+	if is_idle:
+		bob = sin(time_alive * 3.2) * 1.6
+	elif is_moving:
+		bob = absf(sin(time_alive * 9.0)) * 3.5
+		
+	var torso = visual_root.get_node_or_null("Torso")
+	var head = visual_root.get_node_or_null("Head")
+	if torso != null:
+		torso.position.y = bob
+	if head != null:
+		head.position.y = base_head_pos_y + bob * 1.15
 
 func apply_gravity(delta: float) -> void:
 	if not is_on_floor():

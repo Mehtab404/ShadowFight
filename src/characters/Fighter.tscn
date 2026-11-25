@@ -13,6 +13,7 @@
 [ext_resource type="Script" path="res://src/characters/fsm/states/BlockStunState.gd" id="11_blockstun"]
 [ext_resource type="Script" path="res://src/characters/fsm/states/KnockdownState.gd" id="12_knockdown"]
 [ext_resource type="Script" path="res://src/characters/fsm/states/GetUpState.gd" id="13_getup"]
+[ext_resource type="Script" path="res://src/characters/fsm/states/DashState.gd" id="14_dash"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_pushbox"]
 radius = 22.0
@@ -186,6 +187,9 @@ script = ExtResource("12_knockdown")
 
 [node name="GetUp" type="Node" parent="StateMachine"]
 script = ExtResource("13_getup")
+
+[node name="Dash" type="Node" parent="StateMachine"]
+script = ExtResource("14_dash")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {

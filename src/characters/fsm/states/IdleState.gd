@@ -1,14 +1,18 @@
 class_name IdleState
 extends State
 
+## IdleState: Neutral martial arts stance with momentum settling and breathing settle.
+
+@export var friction: float = 750.0
+
 func enter(_params: Dictionary = {}) -> void:
 	if fighter.has_method("play_animation"):
 		fighter.play_animation("idle")
-	fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 600.0)
 
-func physics_update(_delta: float) -> void:
-	fighter.apply_gravity(_delta)
-	fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, 500.0 * _delta)
+func physics_update(delta: float) -> void:
+	fighter.apply_gravity(delta)
+	# Organic deceleration to standstill
+	fighter.velocity.x = move_toward(fighter.velocity.x, 0.0, friction * delta)
 	fighter.move_and_slide()
 	fighter.face_opponent()
 	

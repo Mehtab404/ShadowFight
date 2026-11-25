@@ -179,6 +179,7 @@
 
   <div id="controls-hint">
     <span>Move: <span class="key-badge">A</span> <span class="key-badge">D</span></span>
+    <span>Dash: <span class="key-badge">Double Tap A/D</span></span>
     <span>Jump: <span class="key-badge">W</span></span>
     <span>Crouch: <span class="key-badge">S</span></span>
     <span>Punch: <span class="key-badge">J</span></span>
@@ -230,8 +231,26 @@
     const WIDTH = 1100, HEIGHT = 620, GROUND_Y = 510;
 
     const KEYS = {};
+    let lastTapKey = '';
+    let lastTapTime = 0;
+    const DOUBLE_TAP_WINDOW = 250;
+
     window.addEventListener('keydown', e => {
-      KEYS[e.key.toLowerCase()] = true;
+      const k = e.key.toLowerCase();
+      KEYS[k] = true;
+
+      // Double-tap dash detection
+      const now = Date.now();
+      if ((k === 'a' || k === 'd' || k === 'arrowleft' || k === 'arrowright') && !e.repeat) {
+        if (k === lastTapKey && (now - lastTapTime) < DOUBLE_TAP_WINDOW) {
+          const isRight = (k === 'd' || k === 'arrowright');
+          const isForward = (p1.facing === 1 && isRight) || (p1.facing === -1 && !isRight);
+          p1.triggerDash(!isForward);
+        }
+        lastTapKey = k;
+        lastTapTime = now;
+      }
+
       if (e.key === '1') p1.setWeapon('bare');
       if (e.key === '2') p1.setWeapon('katana');
       if (e.key === '3') p1.setWeapon('naginata');
@@ -286,12 +305,13 @@
         this.vx = 0;
         this.vy = 0;
         this.facing = facing; // 1 = right, -1 = left
+        this.facingSmooth = facing;
         this.isAI = isAI;
         this.name = name;
         this.health = 100;
         this.maxHealth = 100;
         this.weapon = 'katana';
-        this.state = 'idle'; // idle, move, jump, crouch, attack, hitstun, blockstun, knockdown, getup
+        this.state = 'idle'; // idle, move, dash, jump, crouch, attack, hitstun, blockstun, knockdown, getup
         this.stateTimer = 0;
         this.combo = 0;
         this.comboTimer = 0;
@@ -300,6 +320,12 @@
         this.currentMove = null;
         this.hasHit = false;
         this.aiDecisionTimer = 0;
+
+        // Natural movement & procedural kinematics
+        this.walkCycle = 0;
+        this.squash = 1.0;
+        this.tilt = 0.0;
+        this.wasAirborne = false;
       }
 
       setWeapon(w) {
@@ -311,6 +337,20 @@
         }
       }
 
+      triggerDash(isBackdash = false) {
+        if (this.state !== 'idle' && this.state !== 'move') return;
+        this.state = 'dash';
+        this.stateTimer = isBackdash ? 18 : 15;
+        if (isBackdash) {
+          this.vx = -this.facing * 7.5;
+          this.vy = -5.5; // Evasive hop
+          SFX.whoosh();
+        } else {
+          this.vx = this.facing * 9.5;
+          SFX.whoosh();
+        }
+      }
+
       update(opponent) {
         // Combo decay
         if (this.combo > 0) {
@@ -319,29 +359,57 @@
         }
 
         // Gravity & Ground
-        this.vy += 28 * (1/60) * 60;
+        const gravity = (Math.abs(this.vy) < 2.0 && this.state === 'jump') ? 14 : 28; // Apex hang
+        this.vy += gravity * (1/60) * 60;
         this.x += this.vx;
         this.y += this.vy;
+
         if (this.y >= GROUND_Y) {
           this.y = GROUND_Y;
           this.vy = 0;
+          if (this.wasAirborne) {
+            // Landing impact cushion
+            this.squash = 0.82;
+            this.wasAirborne = false;
+          }
+        } else {
+          this.wasAirborne = true;
         }
 
-        // Friction
-        if (this.state !== 'move') {
-          this.vx *= 0.82;
+        // Squash & stretch recovery
+        this.squash += (1.0 - this.squash) * 0.16;
+
+        // Natural friction and deceleration when not driving movement
+        if (this.state !== 'move' && this.state !== 'dash') {
+          this.vx *= 0.78;
+          if (Math.abs(this.vx) < 0.15) {
+            this.vx = 0;
+            if (this.state === 'move') this.state = 'idle';
+          }
         }
 
-        // Auto-facing
+        // Auto-facing opponent (with smooth turn pivot)
         if (this.state === 'idle' || this.state === 'move' || this.state === 'crouch') {
           this.facing = (opponent.x > this.x) ? 1 : -1;
         }
+        this.facingSmooth += (this.facing - this.facingSmooth) * 0.22;
 
         // State Machine Update
         if (this.isAI) this.updateAI(opponent);
         else this.handlePlayerInput(opponent);
 
         this.processState(opponent);
+
+        // Update locomotion stride cycle
+        if (this.state === 'move') {
+          this.walkCycle += Math.abs(this.vx) * 0.055;
+        } else if (this.state === 'idle') {
+          this.walkCycle += 0.018;
+        }
+
+        // Dynamic torso lean into acceleration
+        const targetTilt = (this.vx * this.facing) * 0.038;
+        this.tilt += (targetTilt - this.tilt) * 0.14;
 
         // Stage bounds
         this.x = Math.max(60, Math.min(WIDTH - 60, this.x));
@@ -361,14 +429,16 @@
         // Jump
         if (up && this.y >= GROUND_Y) {
           this.state = 'jump';
-          this.vy = -14;
-          this.vx = (right ? 4 : (left ? -4 : 0));
+          this.vy = -14.5;
+          this.vx = (right ? 3.8 : (left ? -3.8 : 0));
+          this.squash = 1.25; // Liftoff stretch
           return;
         }
 
         // Crouch
         if (down && this.y >= GROUND_Y) {
           this.state = 'crouch';
+          this.vx *= 0.75;
           if (kick) {
             this.startAttack(this.getMoveData('sweep'));
             KEYS['k'] = false;
@@ -398,14 +468,21 @@
           return;
         }
 
-        // Move
+        // Fluid locomotion with martial arts acceleration
         if (left || right) {
           this.state = 'move';
           const movingForward = (this.facing === 1 && right) || (this.facing === -1 && left);
-          const speed = movingForward ? 4.5 : 3.2;
-          this.vx = (right ? speed : -speed);
+          const topSpeed = movingForward ? 4.2 : 2.8;
+          const targetVx = (right ? 1 : -1) * topSpeed;
+          this.vx += (targetVx - this.vx) * 0.18; // Smooth acceleration
         } else {
-          this.state = 'idle';
+          if (this.state === 'move') {
+            this.vx *= 0.75;
+            if (Math.abs(this.vx) < 0.2) {
+              this.vx = 0;
+              this.state = 'idle';
+            }
+          }
         }
       }
 
@@ -414,36 +491,40 @@
         const dist = Math.abs(opponent.x - this.x);
 
         if (this.aiDecisionTimer <= 0 && (this.state === 'idle' || this.state === 'move')) {
-          this.aiDecisionTimer = 0.15 + Math.random() * 0.2;
+          this.aiDecisionTimer = 0.16 + Math.random() * 0.22;
           const oppAttacking = opponent.state === 'attack';
 
           // Reactive block
           if (oppAttacking && dist < 180 && Math.random() < 0.75) {
             this.state = 'move';
-            this.vx = (this.facing === 1 ? -3 : 3); // Hold back to block
+            this.vx += ((this.facing === 1 ? -2.8 : 2.8) - this.vx) * 0.2;
             return;
           }
 
-          if (dist > 250) {
-            // Advance
+          if (dist > 260) {
+            // Smooth advance
             this.state = 'move';
-            this.vx = (this.facing === 1 ? 4 : -4);
-          } else if (dist < 100) {
-            // Close quarters mixup
+            const targetVx = (this.facing === 1 ? 4.0 : -4.0);
+            this.vx += (targetVx - this.vx) * 0.16;
+          } else if (dist < 110) {
+            // Close quarters: backdash or sweep
             const r = Math.random();
             if (r < 0.35) {
-              this.vx = (this.facing === 1 ? -3.5 : 3.5); // Back dash
+              this.triggerDash(true); // Tactical back-hop
             } else if (r < 0.70) {
               this.startAttack(this.getMoveData('sweep'));
             } else {
               this.startAttack(this.getMoveData('jab'));
             }
           } else {
-            // Mid range
+            // Mid range footsies
             const r = Math.random();
-            if (r < 0.4) this.startAttack(this.getMoveData('thrust'));
-            else if (r < 0.7) this.startAttack(this.getMoveData('roundhouse'));
-            else this.vx = 0;
+            if (r < 0.40) this.startAttack(this.getMoveData('thrust'));
+            else if (r < 0.70) this.startAttack(this.getMoveData('roundhouse'));
+            else {
+              this.state = 'idle';
+              this.vx *= 0.8;
+            }
           }
         }
       }
@@ -469,12 +550,17 @@
         this.attackPhase = 'startup';
         this.stateTimer = move.startup;
         this.hasHit = false;
-        this.vx = this.facing * 2.5;
+        this.vx = this.facing * 3.2; // Natural step forward into attack
         SFX.whoosh();
       }
 
       processState(opponent) {
-        if (this.state === 'attack') {
+        if (this.state === 'dash') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            this.state = 'idle';
+          }
+        } else if (this.state === 'attack') {
           this.stateTimer--;
           if (this.stateTimer <= 0) {
             if (this.attackPhase === 'startup') {
@@ -492,7 +578,6 @@
           // Hitbox check during active phase
           if (this.attackPhase === 'active' && !this.hasHit) {
             const hitReach = this.currentMove.reach;
-            const hitZone = this.currentMove.zone;
             const dist = Math.abs(this.x - opponent.x);
             const inFront = (this.facing === 1 && opponent.x > this.x) || (this.facing === -1 && opponent.x < this.x);
 
@@ -529,7 +614,6 @@
           if (this.facing === -1 && right) return true;
           return false;
         } else {
-          // AI block check
           return (this.facing === 1 && this.vx < 0) || (this.facing === -1 && this.vx > 0);
         }
       }
@@ -542,14 +626,13 @@
         const hitY = this.y - (move.zone === 'head' ? 95 : (move.zone === 'legs' ? 25 : 60));
 
         if (isBlocked) {
-          // Block Stun
           SFX.block();
           spawnSparks(hitX, hitY, 12, '#38bdf8');
           const chip = Math.max(1, Math.round(move.base * 0.15));
           this.health = Math.max(0, this.health - chip);
           this.state = 'blockstun';
           this.stateTimer = 14;
-          this.vx = attacker.facing * 4;
+          this.vx = attacker.facing * 4.5;
           triggerHitstop(3);
           updateHealthUI();
           return;
@@ -564,7 +647,6 @@
         this.health = Math.max(0, this.health - dmg);
         updateHealthUI();
 
-        // Sound & Sparks
         if (SFX[move.sfx]) SFX[move.sfx]();
         spawnSparks(hitX, hitY, 24, '#fbbf24');
         triggerHitstop(move.knockdown ? 8 : 5);
@@ -595,76 +677,137 @@
       draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.scale(this.facing, 1);
+        ctx.scale(this.facingSmooth, this.squash);
+        ctx.rotate(this.tilt);
 
         // Rim light / Glow effect
-        ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.6)' : 'rgba(56, 189, 248, 0.6)');
-        ctx.shadowBlur = (this.state === 'attack' && this.attackPhase === 'active') ? 18 : 6;
+        ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.65)' : 'rgba(56, 189, 248, 0.65)');
+        ctx.shadowBlur = (this.state === 'attack' && this.attackPhase === 'active') ? 22 : 8;
 
-        ctx.fillStyle = '#060609'; // Silhouette black
-        ctx.strokeStyle = '#060609';
+        ctx.fillStyle = '#050408'; // Deep silhouette
+        ctx.strokeStyle = '#050408';
         ctx.lineWidth = 8;
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
 
-        // Draw Skeletal Limbs based on pose/state
         const isCrouch = (this.state === 'crouch');
-        const isHit = (this.state === 'hitstun' || this.state === 'blockstun');
         const isDown = (this.state === 'knockdown');
+        const isDash = (this.state === 'dash');
+        const isJump = (this.state === 'jump');
+        const isMove = (this.state === 'move');
 
         if (isDown) {
           // Fallen on ground pose
           ctx.beginPath();
-          ctx.arc(40, -15, 14, 0, Math.PI * 2); // Head
+          ctx.arc(36, -14, 14, 0, Math.PI * 2); // Head
           ctx.fill();
           ctx.beginPath();
-          ctx.moveTo(30, -15); ctx.lineTo(-20, -10); // Torso
+          ctx.moveTo(26, -14); ctx.lineTo(-16, -10); // Torso
           ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(-20, -10); ctx.lineTo(-50, -5); // Legs
+          ctx.moveTo(-16, -10); ctx.lineTo(-45, -6); // Legs
           ctx.stroke();
           ctx.restore();
           return;
         }
 
-        const headY = isCrouch ? -65 : -95;
-        const torsoTopY = isCrouch ? -50 : -80;
-        const hipY = isCrouch ? -25 : -40;
+        // Procedural breathing bob
+        const breathe = Math.sin(Date.now() * 0.0035) * (this.state === 'idle' ? 2.4 : 0.8);
+        const headY = isCrouch ? -65 : (-96 + breathe * 1.2);
+        const torsoTopY = isCrouch ? -50 : (-82 + breathe);
+        const hipY = isCrouch ? -25 : (-38 + breathe * 0.6);
 
         // Head
         ctx.beginPath();
         ctx.arc(0, headY, 15, 0, Math.PI * 2);
         ctx.fill();
 
-        // Torso
+        // Torso with natural spinal curvature
         ctx.lineWidth = 14;
         ctx.beginPath();
         ctx.moveTo(0, torsoTopY);
+        ctx.lineTo(isDash ? 8 : 0, (torsoTopY + hipY) * 0.5);
         ctx.lineTo(0, hipY);
         ctx.stroke();
 
-        // Legs
+        // --- 2-SEGMENT LEG KINEMATICS (HIP -> KNEE -> ANKLE/FOOT) ---
         ctx.lineWidth = 10;
-        ctx.beginPath();
-        if (isCrouch) {
-          ctx.moveTo(0, hipY); ctx.lineTo(15, -15); ctx.lineTo(20, 0); // Front leg
-          ctx.moveTo(0, hipY); ctx.lineTo(-20, -10); ctx.lineTo(-25, 0); // Back leg
-        } else {
-          const walkPhase = Math.sin(Date.now() * 0.015) * (this.state === 'move' ? 18 : 3);
-          ctx.moveTo(0, hipY); ctx.lineTo(10 + walkPhase, -20); ctx.lineTo(12 + walkPhase * 0.5, 0);
-          ctx.moveTo(0, hipY); ctx.lineTo(-10 - walkPhase, -20); ctx.lineTo(-12 - walkPhase * 0.5, 0);
-        }
-        ctx.stroke();
 
-        // Arms & Weapon
+        const drawLeg = (isFront) => {
+          const phase = this.walkCycle + (isFront ? 0 : Math.PI);
+          ctx.beginPath();
+
+          if (isCrouch) {
+            if (isFront) {
+              // Extended low sweep front leg
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(24, -12);
+              ctx.lineTo(44, 0);
+            } else {
+              // Folded back knee
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(-18, -12);
+              ctx.lineTo(-24, 0);
+            }
+          } else if (isJump) {
+            // Legs tucked under body in air
+            const offX = isFront ? 14 : -12;
+            ctx.moveTo(0, hipY);
+            ctx.lineTo(offX, hipY + 16);
+            ctx.lineTo(offX * 0.6, hipY + 30);
+          } else if (isDash) {
+            // Aerodynamic low slide
+            if (isFront) {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(26, -16);
+              ctx.lineTo(38, 0);
+            } else {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(-22, -18);
+              ctx.lineTo(-36, 0);
+            }
+          } else if (isMove) {
+            // Organic walking stride cycle
+            const strideForward = Math.sin(phase) * 26;
+            const strideLift = Math.max(0, -Math.cos(phase) * 16);
+            const footX = strideForward;
+            const footY = -strideLift;
+            const kneeX = footX * 0.45 + (strideLift > 2 ? 14 : 8);
+            const kneeY = (hipY + footY) * 0.52 - (strideLift * 0.3);
+
+            ctx.moveTo(0, hipY);
+            ctx.lineTo(kneeX, kneeY);
+            ctx.lineTo(footX, footY);
+          } else {
+            // Neutral martial arts rooted stance
+            if (isFront) {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(14, -20);
+              ctx.lineTo(12, 0);
+            } else {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(-12, -20);
+              ctx.lineTo(-14, 0);
+            }
+          }
+          ctx.stroke();
+        };
+
+        // Draw rear leg first (layering behind torso)
+        drawLeg(false);
+        // Draw front leg
+        drawLeg(true);
+
+        // --- ARMS & WEAPON ---
         ctx.lineWidth = 8;
         ctx.beginPath();
         if (this.state === 'attack') {
           // Dynamic Strike Pose
-          const reachProgress = (this.attackPhase === 'active') ? 1.0 : (this.attackPhase === 'startup' ? 0.3 : 0.6);
-          const reachX = 25 + reachProgress * 35;
+          const reachProgress = (this.attackPhase === 'active') ? 1.0 : (this.attackPhase === 'startup' ? 0.35 : 0.65);
+          const reachX = 24 + reachProgress * 38;
           const reachY = torsoTopY + 10;
           ctx.moveTo(0, torsoTopY + 5);
-          ctx.lineTo(reachX * 0.5, reachY - 10);
+          ctx.lineTo(reachX * 0.5, reachY - 12);
           ctx.lineTo(reachX, reachY);
           ctx.stroke();
 
@@ -675,34 +818,39 @@
             ctx.lineWidth = (this.weapon === 'naginata' ? 5 : 4);
             ctx.beginPath();
             ctx.moveTo(reachX, reachY);
-            ctx.lineTo(reachX + bladeLen, reachY - 10);
+            ctx.lineTo(reachX + bladeLen, reachY - 12);
             ctx.stroke();
 
-            // Slash Arc visual
+            // Dynamic slash arc trail
             if (this.attackPhase === 'active') {
-              ctx.strokeStyle = 'rgba(251, 191, 36, 0.4)';
-              ctx.lineWidth = 16;
+              ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+              ctx.lineWidth = 18;
               ctx.beginPath();
-              ctx.arc(reachX - 20, reachY, bladeLen, -0.4, 0.4);
+              ctx.arc(reachX - 20, reachY, bladeLen, -0.42, 0.42);
               ctx.stroke();
             }
           }
         } else if (this.state === 'blockstun') {
-          // Cross arm block pose
-          ctx.moveTo(0, torsoTopY + 5); ctx.lineTo(15, torsoTopY - 5); ctx.lineTo(12, torsoTopY + 15);
+          // Cross-arm block pose
+          ctx.moveTo(0, torsoTopY + 5);
+          ctx.lineTo(16, torsoTopY - 6);
+          ctx.lineTo(14, torsoTopY + 16);
           ctx.stroke();
         } else {
-          // Neutral Guard Pose
-          ctx.moveTo(0, torsoTopY + 5); ctx.lineTo(18, torsoTopY + 15); ctx.lineTo(24, torsoTopY + 5);
+          // Organic Guard Stance (Hands breathing in front of chest)
+          const handBreathe = breathe * 0.8;
+          ctx.moveTo(0, torsoTopY + 6);
+          ctx.lineTo(18, torsoTopY + 18 + handBreathe);
+          ctx.lineTo(24, torsoTopY + 6 + handBreathe);
           ctx.stroke();
 
-          // Sheathed/Held Weapon
+          // Sheathed/Held Weapon at waist
           if (this.weapon !== 'bare') {
             ctx.strokeStyle = '#94a3b8';
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(24, torsoTopY + 5);
-            ctx.lineTo(45, torsoTopY - 25);
+            ctx.moveTo(24, torsoTopY + 6 + handBreathe);
+            ctx.lineTo(48, torsoTopY - 26);
             ctx.stroke();
           }
         }

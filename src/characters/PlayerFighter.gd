@@ -4,10 +4,30 @@ extends Fighter
 @export var player_id: int = 1 # 1 or 2
 
 var prefix: String = "p1_"
+var last_press_time_left: float = -1.0
+var last_press_time_right: float = -1.0
+const DOUBLE_TAP_WINDOW: float = 0.24
 
 func _ready() -> void:
 	prefix = "p1_" if player_id == 1 else "p2_"
 	super._ready()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed(prefix + "move_right"):
+		var curr_time = float(Time.get_ticks_msec()) / 1000.0
+		if curr_time - last_press_time_right < DOUBLE_TAP_WINDOW:
+			_try_dash(1)
+		last_press_time_right = curr_time
+	elif event.is_action_pressed(prefix + "move_left"):
+		var curr_time = float(Time.get_ticks_msec()) / 1000.0
+		if curr_time - last_press_time_left < DOUBLE_TAP_WINDOW:
+			_try_dash(-1)
+		last_press_time_left = curr_time
+
+func _try_dash(dir: int) -> void:
+	if state_machine != null and (state_machine.current_state is IdleState or state_machine.current_state is MoveState):
+		var is_forward = (dir == facing_direction)
+		state_machine.change_state("dash", {"is_backdash": not is_forward})
 
 func get_movement_input() -> float:
 	var left = Input.is_action_pressed(prefix + "move_left")
