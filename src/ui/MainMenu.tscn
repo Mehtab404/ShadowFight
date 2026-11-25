@@ -89,6 +89,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "🏆 TOURNAMENT LADDER"
 
+[node name="VersusBtn" type="Button" parent="Margin/VBox/ButtonContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "👥 2-PLAYER LOCAL VS"
+
 [node name="StageBtn" type="Button" parent="Margin/VBox/ButtonContainer"]
 custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
@@ -159,6 +165,7 @@ text = "CLOSE"
 
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/PlayBtn" to="." method="_on_play_ai_pressed"]
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/TournamentBtn" to="." method="_on_tournament_pressed"]
+[connection signal="pressed" from="Margin/VBox/ButtonContainer/VersusBtn" to="." method="_on_versus_pressed"]
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/StageBtn" to="." method="_on_stage_btn_pressed"]
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/AudioBtn" to="." method="_on_audio_btn_pressed"]
 [connection signal="pressed" from="Margin/VBox/ButtonContainer/ControlsBtn" to="." method="_on_controls_pressed"]

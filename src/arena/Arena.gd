@@ -66,6 +66,12 @@ func _ready() -> void:
 				p2.difficulty = AIFighter.AIDifficulty.MASTER
 				p2.equip_weapon(WeaponData.create_naginata())
 				apply_stage_theme(2)
+	elif GameManager.game_mode == 2:
+		p2.fighter_name = "Player 2"
+		p2.max_health = 100.0
+		p2.health = 100.0
+		p2.equip_weapon(WeaponData.create_katana())
+		apply_stage_theme(GameManager.selected_stage)
 	else:
 		apply_stage_theme(GameManager.selected_stage)
 	

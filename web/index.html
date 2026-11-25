@@ -178,11 +178,12 @@
 
       <div style="display:flex; justify-content:space-between; align-items:center; color:#94a3b8; font-size:12px; pointer-events:auto;">
         <div style="display:flex; gap:10px;">
+          <button id="mode-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">👥 MODE: 1P VS AI</button>
           <button id="char-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">🥋 FIGHTER: RONIN</button>
           <button id="stage-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">⛩️ STAGE: DOJO</button>
           <button id="bgm-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">🎵 BGM: ON</button>
         </div>
-        <div>SUPER: <span class="key-badge">SPACE</span> / <span class="key-badge">U</span> | WEAPONS: <span class="key-badge">1</span>..<span class="key-badge">4</span></div>
+        <div>P1: <span class="key-badge">WASD</span>+<span class="key-badge">JKL</span> | P2: <span class="key-badge">ARROWS</span>+<span class="key-badge">[]\</span> | SUPER: <span class="key-badge">SPACE/O</span></div>
       </div>
     </div>
 
@@ -243,15 +244,34 @@
       osc.start();
       osc.stop(audioCtx.currentTime + duration);
     }
+    function playMetalNoise() {
+      if (!audioCtx) return;
+      const bufferSize = audioCtx.sampleRate * 0.08;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.22));
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 3400;
+      filter.Q.value = 7.0;
+      noise.connect(filter);
+      filter.connect(audioCtx.destination);
+      noise.start();
+    }
+
     const SFX = {
       whoosh: () => playSynthSound(180, 0.12, 'triangle', -90),
-      slash: () => playSynthSound(480, 0.16, 'sawtooth', -300),
+      slash: () => { playSynthSound(480, 0.16, 'sawtooth', -300); playMetalNoise(); },
       punch: () => playSynthSound(110, 0.18, 'sine', -70),
       kick: () => playSynthSound(85, 0.22, 'sine', -55),
-      block: () => playSynthSound(680, 0.09, 'square', -400),
-      parry: () => playSynthSound(880, 0.35, 'sine', -120),
+      block: () => { playSynthSound(680, 0.09, 'square', -400); playMetalNoise(); },
+      parry: () => { playSynthSound(880, 0.35, 'sine', -120); playMetalNoise(); playMetalNoise(); },
       chain: () => playSynthSound(750, 0.14, 'square', -500),
-      knockdown: () => playSynthSound(70, 0.45, 'triangle', -45),
+      knockdown: () => { playSynthSound(70, 0.45, 'triangle', -45); playSynthSound(45, 0.5, 'sine', -20); },
       taiko: (f = 55) => playSynthSound(f, 0.28, 'sine', -25),
       shamisen: (f = 293) => playSynthSound(f, 0.22, 'triangle', -30)
     };
@@ -296,20 +316,44 @@
 
       // Double-tap dash detection
       const now = Date.now();
-      if ((k === 'a' || k === 'd' || k === 'arrowleft' || k === 'arrowright') && !e.repeat) {
+      if ((k === 'a' || k === 'd') && !e.repeat) {
         if (k === lastTapKey && (now - lastTapTime) < DOUBLE_TAP_WINDOW) {
-          const isRight = (k === 'd' || k === 'arrowright');
+          const isRight = (k === 'd');
           const isForward = (p1.facing === 1 && isRight) || (p1.facing === -1 && !isRight);
           p1.triggerDash(!isForward);
         }
         lastTapKey = k;
         lastTapTime = now;
+      } else if ((k === 'arrowleft' || k === 'arrowright') && !e.repeat) {
+        if (is2PlayerMode) {
+          if (k === lastTapKey && (now - lastTapTime) < DOUBLE_TAP_WINDOW) {
+            const isRight = (k === 'arrowright');
+            const isForward = (p2.facing === 1 && isRight) || (p2.facing === -1 && !isRight);
+            p2.triggerDash(!isForward);
+          }
+        } else {
+          if (k === lastTapKey && (now - lastTapTime) < DOUBLE_TAP_WINDOW) {
+            const isRight = (k === 'arrowright');
+            const isForward = (p1.facing === 1 && isRight) || (p1.facing === -1 && !isRight);
+            p1.triggerDash(!isForward);
+          }
+        }
+        lastTapKey = k;
+        lastTapTime = now;
       }
 
+      // P1 Weapon Switch
       if (e.key === '1') p1.setWeapon('bare');
       if (e.key === '2') p1.setWeapon('katana');
       if (e.key === '3') p1.setWeapon('naginata');
       if (e.key === '4') p1.setWeapon('kusarigama');
+
+      // P2 Weapon Switch
+      if (e.key === '7') p2.setWeapon('bare');
+      if (e.key === '8') p2.setWeapon('katana');
+      if (e.key === '9') p2.setWeapon('naginata');
+      if (e.key === '0') p2.setWeapon('kusarigama');
+
       if (e.key === 'r' || e.key === 'R') resetMatch();
     });
     window.addEventListener('keyup', e => KEYS[e.key.toLowerCase()] = false);
@@ -320,6 +364,21 @@
       document.getElementById('stage-toggle-btn').innerText = `⛩️ STAGE: ${STAGE_CONFIGS[currentStage].name}`;
       SFX.whoosh();
     });
+
+    // 2-Player Versus Mode Toggle
+    let is2PlayerMode = false;
+    const modeToggleBtn = document.getElementById('mode-toggle-btn');
+    if (modeToggleBtn) {
+      modeToggleBtn.addEventListener('click', () => {
+        is2PlayerMode = !is2PlayerMode;
+        p2.isAI = !is2PlayerMode;
+        p2.name = is2PlayerMode ? "Player 2" : "Shadow Bot";
+        document.getElementById('p2-name').innerText = p2.name.toUpperCase();
+        modeToggleBtn.innerText = is2PlayerMode ? "👥 MODE: 2-PLAYER VS" : "👥 MODE: 1P VS AI";
+        announce(is2PlayerMode ? "2-PLAYER VERSUS ACTIVATED!\nP1: WASD+JKL | P2: ARROWS+[]\\" : "SOLO VS AI ACTIVATED", 1800);
+        SFX.whoosh();
+      });
+    }
 
     // BGM toggle listener
     document.getElementById('bgm-toggle-btn').addEventListener('click', () => {
@@ -572,19 +631,20 @@
       handlePlayerInput(opponent) {
         if (this.state !== 'idle' && this.state !== 'move' && this.state !== 'crouch') return;
 
-        const left = KEYS['a'] || KEYS['arrowleft'];
-        const right = KEYS['d'] || KEYS['arrowright'];
-        const up = KEYS['w'] || KEYS['arrowup'];
-        const down = KEYS['s'] || KEYS['arrowdown'];
-        const punch = KEYS['j'];
-        const kick = KEYS['k'];
-        const weaponBtn = KEYS['l'];
-        const superBtn = KEYS[' '] || KEYS['u'];
+        const isP2 = (this === p2);
+        const left = isP2 ? KEYS['arrowleft'] : (KEYS['a'] || (!is2PlayerMode && KEYS['arrowleft']));
+        const right = isP2 ? KEYS['arrowright'] : (KEYS['d'] || (!is2PlayerMode && KEYS['arrowright']));
+        const up = isP2 ? KEYS['arrowup'] : (KEYS['w'] || (!is2PlayerMode && KEYS['arrowup']));
+        const down = isP2 ? KEYS['arrowdown'] : (KEYS['s'] || (!is2PlayerMode && KEYS['arrowdown']));
+        const punch = isP2 ? (KEYS['['] || KEYS['numpad1']) : KEYS['j'];
+        const kick = isP2 ? (KEYS[']'] || KEYS['numpad2']) : KEYS['k'];
+        const weaponBtn = isP2 ? (KEYS['\\'] || KEYS['numpad3']) : KEYS['l'];
+        const superBtn = isP2 ? (KEYS['o'] || KEYS['enter']) : (KEYS[' '] || KEYS['u']);
 
         // Super Shadow Ability
         if (superBtn && this.shadowEnergy >= 100) {
-          KEYS[' '] = false;
-          KEYS['u'] = false;
+          if (isP2) { KEYS['o'] = false; KEYS['enter'] = false; }
+          else { KEYS[' '] = false; KEYS['u'] = false; }
           this.triggerShadowAbility(opponent);
           return;
         }
@@ -604,7 +664,8 @@
           this.vx *= 0.75;
           if (kick) {
             this.startAttack(this.getMoveData('sweep'));
-            KEYS['k'] = false;
+            if (isP2) { KEYS[']'] = false; KEYS['numpad2'] = false; }
+            else KEYS['k'] = false;
           }
           return;
         }
@@ -612,20 +673,23 @@
         // Attacks
         const forwardHeld = (this.facing === 1 && right) || (this.facing === -1 && left);
         if (weaponBtn) {
-          KEYS['l'] = false;
+          if (isP2) { KEYS['\\'] = false; KEYS['numpad3'] = false; }
+          else KEYS['l'] = false;
           if (up) this.startAttack(this.getMoveData('overhead'));
           else if (forwardHeld) this.startAttack(this.getMoveData('thrust'));
           else this.startAttack(this.getMoveData('slash'));
           return;
         }
         if (kick) {
-          KEYS['k'] = false;
+          if (isP2) { KEYS[']'] = false; KEYS['numpad2'] = false; }
+          else KEYS['k'] = false;
           if (forwardHeld) this.startAttack(this.getMoveData('roundhouse'));
           else this.startAttack(this.getMoveData('low_kick'));
           return;
         }
         if (punch) {
-          KEYS['j'] = false;
+          if (isP2) { KEYS['['] = false; KEYS['numpad1'] = false; }
+          else KEYS['j'] = false;
           if (forwardHeld) this.startAttack(this.getMoveData('straight'));
           else this.startAttack(this.getMoveData('jab'));
           return;
@@ -810,11 +874,18 @@
       isHoldingBlock(attacker) {
         let isGuarding = false;
         if (!this.isAI) {
-          if (KEYS['i']) isGuarding = true;
-          const left = KEYS['a'] || KEYS['arrowleft'];
-          const right = KEYS['d'] || KEYS['arrowright'];
-          if (this.facing === 1 && left) isGuarding = true;
-          if (this.facing === -1 && right) isGuarding = true;
+          const isP2 = (this === p2);
+          if (isP2) {
+            if (KEYS['p'] || KEYS['numpad0']) isGuarding = true;
+            if (this.facing === 1 && KEYS['arrowleft']) isGuarding = true;
+            if (this.facing === -1 && KEYS['arrowright']) isGuarding = true;
+          } else {
+            if (KEYS['i']) isGuarding = true;
+            const left = KEYS['a'] || (!is2PlayerMode && KEYS['arrowleft']);
+            const right = KEYS['d'] || (!is2PlayerMode && KEYS['arrowright']);
+            if (this.facing === 1 && left) isGuarding = true;
+            if (this.facing === -1 && right) isGuarding = true;
+          }
         } else {
           isGuarding = (this.facing === 1 && this.vx < 0) || (this.facing === -1 && this.vx > 0);
         }

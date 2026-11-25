@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow Ronin — Playable Web Prototype</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: #08080c;
+      color: #f1f5f9;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    #game-container {
+      position: relative;
+      width: 1100px;
+      height: 620px;
+      background: #0a0812;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(185, 28, 28, 0.2);
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #ui-overlay {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 30px;
+    }
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .fighter-hud {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .hud-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .p2-title { justify-content: flex-end; }
+    .health-bar-bg {
+      position: relative;
+      height: 22px;
+      background: rgba(15, 23, 42, 0.9);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .health-trail {
+      position: absolute;
+      top: 0; height: 100%;
+      background: #f59e0b;
+      transition: width 0.45s ease-out;
+    }
+    .health-fill {
+      position: absolute;
+      top: 0; height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      transition: width 0.1s linear;
+    }
+    .p1-bar .health-fill, .p1-bar .health-trail { left: 0; }
+    .p2-bar .health-fill, .p2-bar .health-trail { right: 0; }
+    .p2-bar .health-fill { background: linear-gradient(90deg, #dc2626, #ef4444); }
+    .timer-box {
+      width: 70px;
+      text-align: center;
+      font-size: 32px;
+      font-weight: 900;
+      color: #f8fafc;
+      text-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+    }
+    #announcement {
+      position: absolute;
+      top: 45%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 52px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-align: center;
+      color: #ffffff;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.9), 0 0 30px rgba(220, 38, 38, 0.7);
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    #combo-badge {
+      position: absolute;
+      top: 100px; left: 40px;
+      font-size: 24px;
+      font-weight: 800;
+      color: #fbbf24;
+      text-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+      opacity: 0;
+      transition: transform 0.15s, opacity 0.2s;
+    }
+    #controls-hint {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #94a3b8;
+      display: flex;
+      gap: 20px;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .key-badge {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.2);
+      font-weight: 700;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="gameCanvas" width="1100" height="620"></canvas>
+    
+    <div id="ui-overlay">
+      <div class="top-bar">
+        <div class="fighter-hud">
+          <div class="hud-title"><span style="color:#ef4444">⚔️</span> SHADOW RONIN <span id="p1-weapon-tag" style="font-size:11px; color:#94a3b8;">[KATANA]</span></div>
+          <div class="health-bar-bg p1-bar">
+            <div id="p1-trail" class="health-trail" style="width: 100%;"></div>
+            <div id="p1-fill" class="health-fill" style="width: 100%;"></div>
+          </div>
+          <div class="shadow-bar-bg" style="height:6px; background:rgba(15,23,42,0.9); margin-top:4px; border-radius:2px; overflow:hidden; border:1px solid rgba(139,92,246,0.3);">
+            <div id="p1-shadow" style="width:0%; height:100%; background:linear-gradient(90deg, #7c3aed, #c084fc); transition:width 0.15s;"></div>
+          </div>
+        </div>
+
+        <div id="timer" class="timer-box">99</div>
+
+        <div class="fighter-hud">
+          <div class="hud-title p2-title"><span id="p2-weapon-tag" style="font-size:11px; color:#94a3b8;">[KATANA]</span> SHADOW BOT <span>👹</span></div>
+          <div class="health-bar-bg p2-bar">
+            <div id="p2-trail" class="health-trail" style="width: 100%;"></div>
+            <div id="p2-fill" class="health-fill" style="width: 100%;"></div>
+          </div>
+          <div class="shadow-bar-bg" style="height:6px; background:rgba(15,23,42,0.9); margin-top:4px; border-radius:2px; overflow:hidden; border:1px solid rgba(139,92,246,0.3);">
+            <div id="p2-shadow" style="width:0%; height:100%; background:linear-gradient(90deg, #c084fc, #7c3aed); transition:width 0.15s; margin-left:auto;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="combo-badge">3 HITS!</div>
+      <div id="announcement">ROUND 1</div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; color:#94a3b8; font-size:12px; pointer-events:auto;">
+        <div style="display:flex; gap:10px;">
+          <button id="mode-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">👥 MODE: 1P VS AI</button>
+          <button id="char-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">🥋 FIGHTER: RONIN</button>
+          <button id="stage-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">⛩️ STAGE: DOJO</button>
+          <button id="bgm-toggle-btn" style="background:#1e293b; color:#f8fafc; border:1px solid #475569; padding:4px 10px; border-radius:4px; cursor:pointer;">🎵 BGM: ON</button>
+        </div>
+        <div>P1: <span class="key-badge">WASD</span>+<span class="key-badge">JKL</span> | P2: <span class="key-badge">ARROWS</span>+<span class="key-badge">[]\</span> | SUPER: <span class="key-badge">SPACE/O</span></div>
+      </div>
+    </div>
+
+    <!-- On-screen touch controls for mobile/tablets -->
+    <div id="touch-controls" style="position:absolute; bottom:25px; width:100%; display:flex; justify-content:space-between; padding:0 30px; pointer-events:none;">
+      <div style="display:flex; gap:8px; pointer-events:auto;">
+        <button id="btn-left" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">◀</button>
+        <button id="btn-right" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">▶</button>
+        <button id="btn-up" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">▲</button>
+        <button id="btn-down" class="touch-btn" style="width:48px; height:48px; background:rgba(30,41,59,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-size:18px;">▼</button>
+      </div>
+      <div style="display:flex; gap:8px; pointer-events:auto;">
+        <button id="btn-punch" class="touch-btn" style="width:48px; height:48px; background:rgba(220,38,38,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">JAB</button>
+        <button id="btn-kick" class="touch-btn" style="width:48px; height:48px; background:rgba(234,88,12,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">KICK</button>
+        <button id="btn-weapon" class="touch-btn" style="width:48px; height:48px; background:rgba(59,130,246,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">SLASH</button>
+        <button id="btn-shadow" class="touch-btn" style="width:52px; height:48px; background:rgba(147,51,234,0.8); border:1px solid rgba(255,255,255,0.3); border-radius:8px; color:#fff; font-weight:800; font-size:10px;">SHADOW</button>
+        <button id="btn-block" class="touch-btn" style="width:48px; height:48px; background:rgba(16,185,129,0.7); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; font-weight:700;">GUARD</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls-hint">
+    <span>Move: <span class="key-badge">A</span> <span class="key-badge">D</span></span>
+    <span>Dash: <span class="key-badge">Double Tap A/D</span></span>
+    <span>Jump: <span class="key-badge">W</span></span>
+    <span>Crouch: <span class="key-badge">S</span></span>
+    <span>Punch: <span class="key-badge">J</span></span>
+    <span>Kick: <span class="key-badge">K</span></span>
+    <span>Weapon: <span class="key-badge">L</span></span>
+    <span>Block: <span class="key-badge">I</span> / Back</span>
+    <span>Restart: <span class="key-badge">R</span></span>
+  </div>
+
+  <script>
+    // --- AUDIO SYNTHESIZER ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioContext();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    window.addEventListener('keydown', initAudio, { once: true });
+    window.addEventListener('click', initAudio, { once: true });
+
+    function playSynthSound(freq, duration, type = 'sine', sweep = 0) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      if (sweep !== 0) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(10, freq + sweep), audioCtx.currentTime + duration);
+      }
+      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+    function playMetalNoise() {
+      if (!audioCtx) return;
+      const bufferSize = audioCtx.sampleRate * 0.08;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.22));
+      }
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 3400;
+      filter.Q.value = 7.0;
+      noise.connect(filter);
+      filter.connect(audioCtx.destination);
+      noise.start();
+    }
+
+    const SFX = {
+      whoosh: () => playSynthSound(180, 0.12, 'triangle', -90),
+      slash: () => { playSynthSound(480, 0.16, 'sawtooth', -300); playMetalNoise(); },
+      punch: () => playSynthSound(110, 0.18, 'sine', -70),
+      kick: () => playSynthSound(85, 0.22, 'sine', -55),
+      block: () => { playSynthSound(680, 0.09, 'square', -400); playMetalNoise(); },
+      parry: () => { playSynthSound(880, 0.35, 'sine', -120); playMetalNoise(); playMetalNoise(); },
+      chain: () => playSynthSound(750, 0.14, 'square', -500),
+      knockdown: () => { playSynthSound(70, 0.45, 'triangle', -45); playSynthSound(45, 0.5, 'sine', -20); },
+      taiko: (f = 55) => playSynthSound(f, 0.28, 'sine', -25),
+      shamisen: (f = 293) => playSynthSound(f, 0.22, 'triangle', -30)
+    };
+
+    // Traditional Japanese Hirajoshi Pentatonic Scale
+    const HIRAJOSHI = [146.83, 155.56, 196.00, 220.00, 233.08, 293.66, 311.13, 392.00, 440.00];
+    let bgmStep = 0;
+    let bgmEnabled = true;
+    setInterval(() => {
+      if (!bgmEnabled || !audioCtx) return;
+      bgmStep = (bgmStep + 1) % 16;
+      if (bgmStep === 0) SFX.taiko(55);
+      else if (bgmStep === 4 || bgmStep === 10) SFX.taiko(85);
+      else if (bgmStep === 6 || bgmStep === 8 || bgmStep === 14) SFX.taiko(190);
+      if (bgmStep % 2 === 0) {
+        const note = HIRAJOSHI[(bgmStep * 3) % HIRAJOSHI.length];
+        SFX.shamisen(note);
+      }
+    }, 220);
+
+    // Stage Themes
+    let currentStage = 0; // 0: Dojo, 1: Bamboo, 2: Burning Temple
+    const STAGE_CONFIGS = [
+      { name: "DOJO (TWILIGHT)", skyTop: "#100a1c", skyBot: "#24101e", moon: "#b91c1c", leafCol: "rgba(244, 114, 182, 0.6)", leafVy: 1.3 },
+      { name: "BAMBOO FOREST", skyTop: "#050914", skyBot: "#0c1526", moon: "#e0e7ff", leafCol: "rgba(74, 222, 128, 0.55)", leafVy: 1.1 },
+      { name: "BURNING TEMPLE", skyTop: "#2b0a08", skyBot: "#451208", moon: "#ea580c", leafCol: "rgba(251, 146, 60, 0.85)", leafVy: -1.4 }
+    ];
+
+    // --- GAME ENGINE SETUP ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const WIDTH = 1100, HEIGHT = 620, GROUND_Y = 510;
+
+    const KEYS = {};
+    let lastTapKey = '';
+    let lastTapTime = 0;
+    const DOUBLE_TAP_WINDOW = 250;
+
+    window.addEventListener('keydown', e => {
+      const k = e.key.toLowerCase();
+      KEYS[k] = true;
+
+      // Double-tap dash detection
+      const now = Date.now();
+      if ((k === 'a' || k === 'd') && !e.repeat) {
+        if (k === lastTapKey && (now - lastTapTime) < DOUBLE_TAP_WINDOW) {
+          const isRight = (k === 'd');
+          const isForward = (p1.facing === 1 && isRight) || (p1.facing === -1 && !isRight);
+          p1.triggerDash(!isForward);
+        }
+        lastTapKey = k;
+        lastTapTime = now;
+      } else if ((k === 'arrowleft' || k === 'arrowright') && !e.repeat) {
+        if (is2PlayerMode) {
+          if (k === lastTapKey && (now - lastTapTime) < DOUBLE_TAP_WINDOW) {
+            const isRight = (k === 'arrowright');
+            const isForward = (p2.facing === 1 && isRight) || (p2.facing === -1 && !isRight);
+            p2.triggerDash(!isForward);
+          }
+        } else {
+          if (k === lastTapKey && (now - lastTapTime) < DOUBLE_TAP_WINDOW) {
+            const isRight = (k === 'arrowright');
+            const isForward = (p1.facing === 1 && isRight) || (p1.facing === -1 && !isRight);
+            p1.triggerDash(!isForward);
+          }
+        }
+        lastTapKey = k;
+        lastTapTime = now;
+      }
+
+      // P1 Weapon Switch
+      if (e.key === '1') p1.setWeapon('bare');
+      if (e.key === '2') p1.setWeapon('katana');
+      if (e.key === '3') p1.setWeapon('naginata');
+      if (e.key === '4') p1.setWeapon('kusarigama');
+
+      // P2 Weapon Switch
+      if (e.key === '7') p2.setWeapon('bare');
+      if (e.key === '8') p2.setWeapon('katana');
+      if (e.key === '9') p2.setWeapon('naginata');
+      if (e.key === '0') p2.setWeapon('kusarigama');
+
+      if (e.key === 'r' || e.key === 'R') resetMatch();
+    });
+    window.addEventListener('keyup', e => KEYS[e.key.toLowerCase()] = false);
+
+    // Stage toggle button listener
+    document.getElementById('stage-toggle-btn').addEventListener('click', () => {
+      currentStage = (currentStage + 1) % STAGE_CONFIGS.length;
+      document.getElementById('stage-toggle-btn').innerText = `⛩️ STAGE: ${STAGE_CONFIGS[currentStage].name}`;
+      SFX.whoosh();
+    });
+
+    // 2-Player Versus Mode Toggle
+    let is2PlayerMode = false;
+    const modeToggleBtn = document.getElementById('mode-toggle-btn');
+    if (modeToggleBtn) {
+      modeToggleBtn.addEventListener('click', () => {
+        is2PlayerMode = !is2PlayerMode;
+        p2.isAI = !is2PlayerMode;
+        p2.name = is2PlayerMode ? "Player 2" : "Shadow Bot";
+        document.getElementById('p2-name').innerText = p2.name.toUpperCase();
+        modeToggleBtn.innerText = is2PlayerMode ? "👥 MODE: 2-PLAYER VS" : "👥 MODE: 1P VS AI";
+        announce(is2PlayerMode ? "2-PLAYER VERSUS ACTIVATED!\nP1: WASD+JKL | P2: ARROWS+[]\\" : "SOLO VS AI ACTIVATED", 1800);
+        SFX.whoosh();
+      });
+    }
+
+    // BGM toggle listener
+    document.getElementById('bgm-toggle-btn').addEventListener('click', () => {
+      bgmEnabled = !bgmEnabled;
+      document.getElementById('bgm-toggle-btn').innerText = `🎵 BGM: ${bgmEnabled ? 'ON' : 'OFF'}`;
+      if (bgmEnabled) initAudio();
+    });
+
+    // Mobile Virtual Touch controls binding
+    const bindTouch = (id, key) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const onDown = (e) => { e.preventDefault(); initAudio(); KEYS[key] = true; };
+      const onUp = (e) => { e.preventDefault(); KEYS[key] = false; };
+      btn.addEventListener('touchstart', onDown, { passive: false });
+      btn.addEventListener('touchend', onUp, { passive: false });
+      btn.addEventListener('mousedown', onDown);
+      btn.addEventListener('mouseup', onUp);
+    };
+    bindTouch('btn-left', 'a');
+    bindTouch('btn-right', 'd');
+    bindTouch('btn-up', 'w');
+    bindTouch('btn-down', 's');
+    bindTouch('btn-punch', 'j');
+    bindTouch('btn-kick', 'k');
+    bindTouch('btn-weapon', 'l');
+    bindTouch('btn-shadow', 'u');
+    bindTouch('btn-block', 'i');
+
+    // Fighter Archetype Roster
+    const ROSTER = [
+      { name: "Ronin", weapon: "katana", maxHealth: 100, label: "🥋 FIGHTER: RONIN" },
+      { name: "Kunoichi", weapon: "kusarigama", maxHealth: 90, label: "🥷 FIGHTER: KUNOICHI" },
+      { name: "Iron Monk", weapon: "bare", maxHealth: 120, label: "🥊 FIGHTER: IRON MONK" }
+    ];
+    let currentCharIdx = 0;
+
+    const charToggleBtn = document.getElementById('char-toggle-btn');
+    if (charToggleBtn) {
+      charToggleBtn.addEventListener('click', () => {
+        currentCharIdx = (currentCharIdx + 1) % ROSTER.length;
+        const charData = ROSTER[currentCharIdx];
+        p1.name = "Shadow " + charData.name;
+        p1.maxHealth = charData.maxHealth;
+        p1.health = charData.maxHealth;
+        p1.setWeapon(charData.weapon);
+        charToggleBtn.innerText = charData.label;
+        document.getElementById('p1-name').innerText = p1.name.toUpperCase();
+        updateHealthUI();
+        SFX.whoosh();
+      });
+    }
+
+    // Floating combat damage numbers
+    const floatingNumbers = [];
+    function spawnDamageNumber(x, y, text, color = '#fef08a') {
+      floatingNumbers.push({
+        x: x + (Math.random() - 0.5) * 20,
+        y,
+        text,
+        color,
+        life: 1.0,
+        vy: -1.7
+      });
+    }
+
+    // --- DAMAGE FORMULA ---
+    // D_final = D_base * M_zone * max(0.3, 1 - 0.1*(C - 1))
+    function calculateDamage(base, zone, combo) {
+      const zoneMult = zone === 'head' ? 1.5 : (zone === 'legs' ? 0.8 : 1.0);
+      const scaling = Math.max(0.3, 1.0 - 0.1 * (combo - 1));
+      return Math.round(base * zoneMult * scaling);
+    }
+
+    // --- PARTICLES ---
+    const particles = [];
+    function spawnSparks(x, y, count = 16, color = '#fbbf24') {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 8;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1.5,
+          color,
+          life: 1.0,
+          decay: 0.03 + Math.random() * 0.05,
+          size: 2 + Math.random() * 3
+        });
+      }
+    }
+    // Atmospheric falling sakura leaves
+    const leaves = [];
+    for (let i = 0; i < 40; i++) {
+      leaves.push({
+        x: Math.random() * WIDTH,
+        y: Math.random() * HEIGHT,
+        vx: 0.8 + Math.random() * 1.2,
+        vy: 1.2 + Math.random() * 1.5,
+        rot: Math.random() * Math.PI,
+        vrot: (Math.random() - 0.5) * 0.05,
+        size: 3 + Math.random() * 3
+      });
+    }
+
+    // --- FIGHTER CLASS ---
+    class Fighter {
+      constructor(x, facing, isAI = false, name = "Ronin") {
+        this.x = x;
+        this.y = GROUND_Y;
+        this.vx = 0;
+        this.vy = 0;
+        this.facing = facing; // 1 = right, -1 = left
+        this.facingSmooth = facing;
+        this.isAI = isAI;
+        this.name = name;
+        this.health = 100;
+        this.maxHealth = 100;
+        this.shadowEnergy = 0;
+        this.maxShadowEnergy = 100;
+        this.shadowPhase = '';
+        this.shadowTimer = 0;
+        this.weapon = 'katana';
+        this.state = 'idle'; // idle, move, dash, jump, crouch, attack, hitstun, blockstun, knockdown, getup, shadow_super
+        this.stateTimer = 0;
+        this.combo = 0;
+        this.comboTimer = 0;
+        this.invulnerable = false;
+        this.attackPhase = ''; // startup, active, recovery
+        this.currentMove = null;
+        this.hasHit = false;
+        this.aiDecisionTimer = 0;
+
+        // Natural movement & procedural kinematics
+        this.walkCycle = 0;
+        this.squash = 1.0;
+        this.tilt = 0.0;
+        this.wasAirborne = false;
+      }
+
+      addShadowEnergy(amt) {
+        this.shadowEnergy = Math.min(this.maxShadowEnergy, this.shadowEnergy + amt);
+        updateHealthUI();
+      }
+
+      triggerShadowAbility(opponent) {
+        if (this.shadowEnergy < 100) return;
+        this.shadowEnergy = 0;
+        updateHealthUI();
+        this.state = 'shadow_super';
+        this.shadowPhase = 'eclipse';
+        this.shadowTimer = 22;
+        this.invulnerable = true;
+        this.vx = 0;
+        this.vy = 0;
+        SFX.taiko(45);
+        SFX.whoosh();
+        announce(this.name.toUpperCase() + "\nSHADOW ABILITY!", 1400);
+        spawnSparks(this.x, this.y - 60, 35, '#c084fc');
+        triggerHitstop(8);
+      }
+
+      setWeapon(w) {
+        this.weapon = w;
+        if (!this.isAI) {
+          document.getElementById('p1-weapon-tag').innerText = `[${w.toUpperCase()}]`;
+        } else {
+          document.getElementById('p2-weapon-tag').innerText = `[${w.toUpperCase()}]`;
+        }
+      }
+
+      triggerDash(isBackdash = false) {
+        if (this.state !== 'idle' && this.state !== 'move') return;
+        this.state = 'dash';
+        this.stateTimer = isBackdash ? 18 : 15;
+        if (isBackdash) {
+          this.vx = -this.facing * 7.5;
+          this.vy = -5.5; // Evasive hop
+          SFX.whoosh();
+        } else {
+          this.vx = this.facing * 9.5;
+          SFX.whoosh();
+        }
+      }
+
+      update(opponent) {
+        // Combo decay
+        if (this.combo > 0) {
+          this.comboTimer -= 1 / 60;
+          if (this.comboTimer <= 0) this.combo = 0;
+        }
+
+        // Gravity & Ground
+        const gravity = (Math.abs(this.vy) < 2.0 && this.state === 'jump') ? 14 : 28; // Apex hang
+        this.vy += gravity * (1/60) * 60;
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.y >= GROUND_Y) {
+          this.y = GROUND_Y;
+          this.vy = 0;
+          if (this.wasAirborne) {
+            // Landing impact cushion
+            this.squash = 0.82;
+            this.wasAirborne = false;
+          }
+        } else {
+          this.wasAirborne = true;
+        }
+
+        // Squash & stretch recovery
+        this.squash += (1.0 - this.squash) * 0.16;
+
+        // Natural friction and deceleration when not driving movement
+        if (this.state !== 'move' && this.state !== 'dash') {
+          this.vx *= 0.78;
+          if (Math.abs(this.vx) < 0.15) {
+            this.vx = 0;
+            if (this.state === 'move') this.state = 'idle';
+          }
+        }
+
+        // Auto-facing opponent (with smooth turn pivot)
+        if (this.state === 'idle' || this.state === 'move' || this.state === 'crouch') {
+          this.facing = (opponent.x > this.x) ? 1 : -1;
+        }
+        this.facingSmooth += (this.facing - this.facingSmooth) * 0.22;
+
+        // State Machine Update
+        if (this.isAI) this.updateAI(opponent);
+        else this.handlePlayerInput(opponent);
+
+        this.processState(opponent);
+
+        // Update locomotion stride cycle
+        if (this.state === 'move') {
+          this.walkCycle += Math.abs(this.vx) * 0.055;
+        } else if (this.state === 'idle') {
+          this.walkCycle += 0.018;
+        }
+
+        // Dynamic torso lean into acceleration
+        const targetTilt = (this.vx * this.facing) * 0.038;
+        this.tilt += (targetTilt - this.tilt) * 0.14;
+
+        // Stage bounds
+        this.x = Math.max(60, Math.min(WIDTH - 60, this.x));
+      }
+
+      handlePlayerInput(opponent) {
+        if (this.state !== 'idle' && this.state !== 'move' && this.state !== 'crouch') return;
+
+        const isP2 = (this === p2);
+        const left = isP2 ? KEYS['arrowleft'] : (KEYS['a'] || (!is2PlayerMode && KEYS['arrowleft']));
+        const right = isP2 ? KEYS['arrowright'] : (KEYS['d'] || (!is2PlayerMode && KEYS['arrowright']));
+        const up = isP2 ? KEYS['arrowup'] : (KEYS['w'] || (!is2PlayerMode && KEYS['arrowup']));
+        const down = isP2 ? KEYS['arrowdown'] : (KEYS['s'] || (!is2PlayerMode && KEYS['arrowdown']));
+        const punch = isP2 ? (KEYS['['] || KEYS['numpad1']) : KEYS['j'];
+        const kick = isP2 ? (KEYS[']'] || KEYS['numpad2']) : KEYS['k'];
+        const weaponBtn = isP2 ? (KEYS['\\'] || KEYS['numpad3']) : KEYS['l'];
+        const superBtn = isP2 ? (KEYS['o'] || KEYS['enter']) : (KEYS[' '] || KEYS['u']);
+
+        // Super Shadow Ability
+        if (superBtn && this.shadowEnergy >= 100) {
+          if (isP2) { KEYS['o'] = false; KEYS['enter'] = false; }
+          else { KEYS[' '] = false; KEYS['u'] = false; }
+          this.triggerShadowAbility(opponent);
+          return;
+        }
+
+        // Jump
+        if (up && this.y >= GROUND_Y) {
+          this.state = 'jump';
+          this.vy = -14.5;
+          this.vx = (right ? 3.8 : (left ? -3.8 : 0));
+          this.squash = 1.25; // Liftoff stretch
+          return;
+        }
+
+        // Crouch
+        if (down && this.y >= GROUND_Y) {
+          this.state = 'crouch';
+          this.vx *= 0.75;
+          if (kick) {
+            this.startAttack(this.getMoveData('sweep'));
+            if (isP2) { KEYS[']'] = false; KEYS['numpad2'] = false; }
+            else KEYS['k'] = false;
+          }
+          return;
+        }
+
+        // Attacks
+        const forwardHeld = (this.facing === 1 && right) || (this.facing === -1 && left);
+        if (weaponBtn) {
+          if (isP2) { KEYS['\\'] = false; KEYS['numpad3'] = false; }
+          else KEYS['l'] = false;
+          if (up) this.startAttack(this.getMoveData('overhead'));
+          else if (forwardHeld) this.startAttack(this.getMoveData('thrust'));
+          else this.startAttack(this.getMoveData('slash'));
+          return;
+        }
+        if (kick) {
+          if (isP2) { KEYS[']'] = false; KEYS['numpad2'] = false; }
+          else KEYS['k'] = false;
+          if (forwardHeld) this.startAttack(this.getMoveData('roundhouse'));
+          else this.startAttack(this.getMoveData('low_kick'));
+          return;
+        }
+        if (punch) {
+          if (isP2) { KEYS['['] = false; KEYS['numpad1'] = false; }
+          else KEYS['j'] = false;
+          if (forwardHeld) this.startAttack(this.getMoveData('straight'));
+          else this.startAttack(this.getMoveData('jab'));
+          return;
+        }
+
+        // Fluid locomotion with martial arts acceleration
+        if (left || right) {
+          this.state = 'move';
+          const movingForward = (this.facing === 1 && right) || (this.facing === -1 && left);
+          const topSpeed = movingForward ? 4.2 : 2.8;
+          const targetVx = (right ? 1 : -1) * topSpeed;
+          this.vx += (targetVx - this.vx) * 0.18; // Smooth acceleration
+        } else {
+          if (this.state === 'move') {
+            this.vx *= 0.75;
+            if (Math.abs(this.vx) < 0.2) {
+              this.vx = 0;
+              this.state = 'idle';
+            }
+          }
+        }
+      }
+
+      updateAI(opponent) {
+        this.aiDecisionTimer -= 1/60;
+        const dist = Math.abs(opponent.x - this.x);
+
+        if (this.aiDecisionTimer <= 0 && (this.state === 'idle' || this.state === 'move')) {
+          this.aiDecisionTimer = 0.16 + Math.random() * 0.22;
+          const oppAttacking = opponent.state === 'attack';
+
+          // Super Shadow Ability if fully charged
+          if (this.shadowEnergy >= 100 && dist < 220 && Math.random() < 0.35) {
+            this.triggerShadowAbility(opponent);
+            return;
+          }
+
+          // Reactive block
+          if (oppAttacking && dist < 180 && Math.random() < 0.75) {
+            this.state = 'move';
+            this.vx += ((this.facing === 1 ? -2.8 : 2.8) - this.vx) * 0.2;
+            return;
+          }
+
+          if (dist > 260) {
+            // Smooth advance
+            this.state = 'move';
+            const targetVx = (this.facing === 1 ? 4.0 : -4.0);
+            this.vx += (targetVx - this.vx) * 0.16;
+          } else if (dist < 110) {
+            // Close quarters: backdash or sweep
+            const r = Math.random();
+            if (r < 0.35) {
+              this.triggerDash(true); // Tactical back-hop
+            } else if (r < 0.70) {
+              this.startAttack(this.getMoveData('sweep'));
+            } else {
+              this.startAttack(this.getMoveData('jab'));
+            }
+          } else {
+            // Mid range footsies
+            const r = Math.random();
+            if (r < 0.40) this.startAttack(this.getMoveData('thrust'));
+            else if (r < 0.70) this.startAttack(this.getMoveData('roundhouse'));
+            else {
+              this.state = 'idle';
+              this.vx *= 0.8;
+            }
+          }
+        }
+      }
+
+      getMoveData(type) {
+        const weaponMult = (this.weapon === 'naginata' || this.weapon === 'kusarigama') ? 1.3 : (this.weapon === 'bare' ? 0.85 : 1.15);
+        const moves = {
+          jab: { name: 'Quick Jab', base: 12, startup: 6, active: 3, recovery: 8, zone: 'head', reach: 65, knock: 3, sfx: 'punch' },
+          straight: { name: 'Straight Punch', base: 18, startup: 9, active: 4, recovery: 12, zone: 'torso', reach: 80, knock: 5, sfx: 'punch' },
+          low_kick: { name: 'Low Kick', base: 14, startup: 7, active: 3, recovery: 10, zone: 'legs', reach: 75, knock: 4, sfx: 'kick' },
+          roundhouse: { name: 'Roundhouse Kick', base: 28, startup: 12, active: 5, recovery: 14, zone: 'head', reach: 95, knock: 10, knockdown: true, sfx: 'kick' },
+          sweep: { name: 'Low Sweep', base: 20, startup: 10, active: 4, recovery: 15, zone: 'legs', reach: 85, knock: 8, knockdown: true, sfx: 'kick' },
+          slash: { name: (this.weapon === 'kusarigama' ? 'Sickle Slash' : 'Katana Slash'), base: 24 * weaponMult, startup: 8, active: 4, recovery: 11, zone: 'torso', reach: (this.weapon === 'naginata' ? 140 : (this.weapon === 'kusarigama' ? 120 : 105)), knock: 6, sfx: (this.weapon === 'kusarigama' ? 'chain' : 'slash') },
+          thrust: { name: (this.weapon === 'kusarigama' ? 'Chain Whip Thrust' : 'Mid Thrust'), base: 32 * weaponMult, startup: 13, active: 5, recovery: 16, zone: 'torso', reach: (this.weapon === 'naginata' ? 165 : (this.weapon === 'kusarigama' ? 210 : 120)), knock: 8, sfx: (this.weapon === 'kusarigama' ? 'chain' : 'slash') },
+          overhead: { name: (this.weapon === 'kusarigama' ? 'Chain High Strike' : 'Overhead Slash'), base: 42 * weaponMult, startup: 16, active: 6, recovery: 18, zone: 'head', reach: (this.weapon === 'naginata' ? 150 : (this.weapon === 'kusarigama' ? 190 : 110)), knock: 12, knockdown: true, sfx: 'slash' }
+        };
+        return moves[type] || moves.jab;
+      }
+
+      startAttack(move) {
+        this.state = 'attack';
+        this.currentMove = move;
+        this.attackPhase = 'startup';
+        this.stateTimer = move.startup;
+        this.hasHit = false;
+        this.vx = this.facing * 3.2; // Natural step forward into attack
+        SFX.whoosh();
+      }
+
+      processState(opponent) {
+        if (this.state === 'dash') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            this.state = 'idle';
+          }
+        } else if (this.state === 'shadow_super') {
+          this.shadowTimer--;
+          if (this.shadowPhase === 'eclipse') {
+            this.vx = this.facing * 18.0;
+            if (Math.random() < 0.4) spawnSparks(this.x, this.y - 50, 4, '#a855f7');
+            if (this.shadowTimer <= 0) {
+              this.shadowPhase = 'slash';
+              this.shadowTimer = 24;
+              this.vx = 0;
+              this.facing = -this.facing;
+              this.facingSmooth = this.facing;
+              SFX.slash();
+              SFX.knockdown();
+              spawnSparks(opponent.x, opponent.y - 65, 45, '#e879f9');
+              triggerHitstop(12);
+              spawnDamageNumber(opponent.x, opponent.y - 85, 'SHADOW 50', '#c084fc');
+              opponent.health = Math.max(0, opponent.health - 50);
+              opponent.state = 'knockdown';
+              opponent.stateTimer = 65;
+              opponent.vx = this.facing * 9.0;
+              opponent.vy = -7.5;
+              updateHealthUI();
+              if (opponent.health <= 0) {
+                onKnockout(this);
+              }
+            }
+          } else if (this.shadowPhase === 'slash') {
+            if (this.shadowTimer <= 0) {
+              this.state = 'idle';
+              this.invulnerable = false;
+              this.shadowPhase = '';
+            }
+          }
+        } else if (this.state === 'attack') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            if (this.attackPhase === 'startup') {
+              this.attackPhase = 'active';
+              this.stateTimer = this.currentMove.active;
+            } else if (this.attackPhase === 'active') {
+              this.attackPhase = 'recovery';
+              this.stateTimer = this.currentMove.recovery;
+            } else {
+              this.state = 'idle';
+              this.currentMove = null;
+            }
+          }
+
+          // Hitbox check during active phase
+          if (this.attackPhase === 'active' && !this.hasHit) {
+            const hitReach = this.currentMove.reach;
+            const dist = Math.abs(this.x - opponent.x);
+            const inFront = (this.facing === 1 && opponent.x > this.x) || (this.facing === -1 && opponent.x < this.x);
+
+            if (inFront && dist < hitReach) {
+              this.hasHit = true;
+              opponent.receiveHit(this, this.currentMove);
+            }
+          }
+        } else if (this.state === 'hitstun' || this.state === 'blockstun') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) this.state = 'idle';
+        } else if (this.state === 'knockdown') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0 && this.y >= GROUND_Y) {
+            this.state = 'getup';
+            this.stateTimer = 25;
+            this.invulnerable = true;
+          }
+        } else if (this.state === 'getup') {
+          this.stateTimer--;
+          if (this.stateTimer <= 0) {
+            this.state = 'idle';
+            this.invulnerable = false;
+          }
+        }
+      }
+
+      isHoldingBlock(attacker) {
+        let isGuarding = false;
+        if (!this.isAI) {
+          const isP2 = (this === p2);
+          if (isP2) {
+            if (KEYS['p'] || KEYS['numpad0']) isGuarding = true;
+            if (this.facing === 1 && KEYS['arrowleft']) isGuarding = true;
+            if (this.facing === -1 && KEYS['arrowright']) isGuarding = true;
+          } else {
+            if (KEYS['i']) isGuarding = true;
+            const left = KEYS['a'] || (!is2PlayerMode && KEYS['arrowleft']);
+            const right = KEYS['d'] || (!is2PlayerMode && KEYS['arrowright']);
+            if (this.facing === 1 && left) isGuarding = true;
+            if (this.facing === -1 && right) isGuarding = true;
+          }
+        } else {
+          isGuarding = (this.facing === 1 && this.vx < 0) || (this.facing === -1 && this.vx > 0);
+        }
+
+        if (isGuarding) {
+          if (!this.guardStartTime) this.guardStartTime = Date.now();
+        } else {
+          this.guardStartTime = 0;
+        }
+        return isGuarding;
+      }
+
+      receiveHit(attacker, move) {
+        if (this.invulnerable || this.health <= 0) return;
+
+        const isBlocked = this.isHoldingBlock(attacker) && !move.knockdown;
+        const hitX = (this.x + attacker.x) * 0.5;
+        const hitY = this.y - (move.zone === 'head' ? 95 : (move.zone === 'legs' ? 25 : 60));
+
+        if (isBlocked) {
+          const guardElapsed = Date.now() - (this.guardStartTime || 0);
+          const isParry = guardElapsed >= 0 && guardElapsed <= 130;
+
+          if (isParry) {
+            // JUST-FRAME PARRY DEFLECTION!
+            SFX.parry();
+            this.addShadowEnergy(30);
+            spawnSparks(hitX, hitY, 30, '#38bdf8');
+            spawnDamageNumber(hitX, hitY - 25, 'PARRY DEFLECT!', '#38bdf8');
+            announce("PARRY DEFLECT!", 900);
+            triggerHitstop(8);
+            attacker.state = 'hitstun';
+            attacker.stateTimer = 26;
+            attacker.vx = -attacker.facing * 4.5;
+            return;
+          }
+
+          // Regular Block
+          SFX.block();
+          this.addShadowEnergy(8);
+          spawnSparks(hitX, hitY, 12, '#38bdf8');
+          const chip = Math.max(1, Math.round(move.base * 0.15));
+          spawnDamageNumber(hitX, hitY - 25, '🛡️ ' + chip, '#38bdf8');
+          this.health = Math.max(0, this.health - chip);
+          this.state = 'blockstun';
+          this.stateTimer = 14;
+          this.vx = attacker.facing * 4.5;
+          triggerHitstop(3);
+          updateHealthUI();
+          return;
+        }
+
+        // Clean Hit
+        attacker.combo++;
+        attacker.comboTimer = 1.3;
+        showCombo(attacker.name, attacker.combo);
+
+        this.addShadowEnergy(14);
+        attacker.addShadowEnergy(18);
+
+        const dmg = calculateDamage(move.base, move.zone, attacker.combo);
+        this.health = Math.max(0, this.health - dmg);
+        spawnDamageNumber(hitX, hitY - 25, (move.zone === 'head' ? 'CRIT ' : '') + dmg, (move.zone === 'head' ? '#ef4444' : '#fef08a'));
+        updateHealthUI();
+
+        if (SFX[move.sfx]) SFX[move.sfx]();
+        spawnSparks(hitX, hitY, 24, '#fbbf24');
+        triggerHitstop(move.knockdown ? 8 : 5);
+
+        if (this.health <= 0) {
+          SFX.knockdown();
+          this.state = 'knockdown';
+          this.stateTimer = 90;
+          this.vx = attacker.facing * 7;
+          this.vy = -8;
+          onKnockout(attacker);
+          return;
+        }
+
+        if (move.knockdown) {
+          SFX.knockdown();
+          this.state = 'knockdown';
+          this.stateTimer = 50;
+          this.vx = attacker.facing * (move.knock || 6);
+          this.vy = -6;
+        } else {
+          this.state = 'hitstun';
+          this.stateTimer = 20;
+          this.vx = attacker.facing * (move.knock || 3);
+        }
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.scale(this.facingSmooth, this.squash);
+        ctx.rotate(this.tilt);
+
+        // Rim light / Glow effect
+        if (this.state === 'shadow_super') {
+          ctx.shadowColor = '#c084fc';
+          ctx.shadowBlur = 38;
+        } else if (this.shadowEnergy >= 100) {
+          ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.95)' : 'rgba(168, 85, 247, 0.95)');
+          ctx.shadowBlur = 20;
+        } else {
+          ctx.shadowColor = (this.isAI ? 'rgba(239, 68, 68, 0.65)' : 'rgba(56, 189, 248, 0.65)');
+          ctx.shadowBlur = (this.state === 'attack' && this.attackPhase === 'active') ? 22 : 8;
+        }
+
+        ctx.fillStyle = '#050408'; // Deep silhouette
+        ctx.strokeStyle = '#050408';
+        ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        const isCrouch = (this.state === 'crouch');
+        const isDown = (this.state === 'knockdown');
+        const isDash = (this.state === 'dash');
+        const isJump = (this.state === 'jump');
+        const isMove = (this.state === 'move');
+
+        if (isDown) {
+          // Fallen on ground pose
+          ctx.beginPath();
+          ctx.arc(36, -14, 14, 0, Math.PI * 2); // Head
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(26, -14); ctx.lineTo(-16, -10); // Torso
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(-16, -10); ctx.lineTo(-45, -6); // Legs
+          ctx.stroke();
+          ctx.restore();
+          return;
+        }
+
+        // Procedural breathing bob
+        const breathe = Math.sin(Date.now() * 0.0035) * (this.state === 'idle' ? 2.4 : 0.8);
+        const headY = isCrouch ? -65 : (-96 + breathe * 1.2);
+        const torsoTopY = isCrouch ? -50 : (-82 + breathe);
+        const hipY = isCrouch ? -25 : (-38 + breathe * 0.6);
+
+        // Head
+        ctx.beginPath();
+        ctx.arc(0, headY, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Torso with natural spinal curvature
+        ctx.lineWidth = 14;
+        ctx.beginPath();
+        ctx.moveTo(0, torsoTopY);
+        ctx.lineTo(isDash ? 8 : 0, (torsoTopY + hipY) * 0.5);
+        ctx.lineTo(0, hipY);
+        ctx.stroke();
+
+        // --- 2-SEGMENT LEG KINEMATICS (HIP -> KNEE -> ANKLE/FOOT) ---
+        ctx.lineWidth = 10;
+
+        const drawLeg = (isFront) => {
+          const phase = this.walkCycle + (isFront ? 0 : Math.PI);
+          ctx.beginPath();
+
+          if (isCrouch) {
+            if (isFront) {
+              // Extended low sweep front leg
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(24, -12);
+              ctx.lineTo(44, 0);
+            } else {
+              // Folded back knee
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(-18, -12);
+              ctx.lineTo(-24, 0);
+            }
+          } else if (isJump) {
+            // Legs tucked under body in air
+            const offX = isFront ? 14 : -12;
+            ctx.moveTo(0, hipY);
+            ctx.lineTo(offX, hipY + 16);
+            ctx.lineTo(offX * 0.6, hipY + 30);
+          } else if (isDash) {
+            // Aerodynamic low slide
+            if (isFront) {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(26, -16);
+              ctx.lineTo(38, 0);
+            } else {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(-22, -18);
+              ctx.lineTo(-36, 0);
+            }
+          } else if (isMove) {
+            // Organic walking stride cycle
+            const strideForward = Math.sin(phase) * 26;
+            const strideLift = Math.max(0, -Math.cos(phase) * 16);
+            const footX = strideForward;
+            const footY = -strideLift;
+            const kneeX = footX * 0.45 + (strideLift > 2 ? 14 : 8);
+            const kneeY = (hipY + footY) * 0.52 - (strideLift * 0.3);
+
+            ctx.moveTo(0, hipY);
+            ctx.lineTo(kneeX, kneeY);
+            ctx.lineTo(footX, footY);
+          } else {
+            // Neutral martial arts rooted stance
+            if (isFront) {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(14, -20);
+              ctx.lineTo(12, 0);
+            } else {
+              ctx.moveTo(0, hipY);
+              ctx.lineTo(-12, -20);
+              ctx.lineTo(-14, 0);
+            }
+          }
+          ctx.stroke();
+        };
+
+        // Draw rear leg first (layering behind torso)
+        drawLeg(false);
+        // Draw front leg
+        drawLeg(true);
+
+        // --- ARMS & WEAPON ---
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        if (this.state === 'attack') {
+          // Dynamic Strike Pose
+          const reachProgress = (this.attackPhase === 'active') ? 1.0 : (this.attackPhase === 'startup' ? 0.35 : 0.65);
+          const reachX = 24 + reachProgress * 38;
+          const reachY = torsoTopY + 10;
+          ctx.moveTo(0, torsoTopY + 5);
+          ctx.lineTo(reachX * 0.5, reachY - 12);
+          ctx.lineTo(reachX, reachY);
+          ctx.stroke();
+
+          // Weapon blade
+          if (this.weapon !== 'bare') {
+            if (this.weapon === 'kusarigama') {
+              // Sickle & Chain
+              ctx.strokeStyle = '#94a3b8';
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(reachX, reachY);
+              ctx.lineTo(reachX + 25, reachY - 15);
+              ctx.lineTo(reachX + 38, reachY - 8); // Curved sickle head
+              ctx.stroke();
+
+              // Trailing chain links
+              ctx.strokeStyle = '#cbd5e1';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(reachX, reachY);
+              const chainLen = (this.attackPhase === 'active') ? 95 : 30;
+              for (let c = 0; c < chainLen; c += 12) {
+                const cy = reachY + Math.sin(c * 0.3 + Date.now() * 0.02) * 6;
+                ctx.lineTo(reachX + c, cy);
+              }
+              ctx.stroke();
+            } else {
+              const bladeLen = (this.weapon === 'naginata') ? 85 : 55;
+              ctx.strokeStyle = (this.weapon === 'naginata' ? '#f59e0b' : '#e2e8f0');
+              ctx.lineWidth = (this.weapon === 'naginata' ? 5 : 4);
+              ctx.beginPath();
+              ctx.moveTo(reachX, reachY);
+              ctx.lineTo(reachX + bladeLen, reachY - 12);
+              ctx.stroke();
+            }
+
+            // Dynamic slash arc trail
+            if (this.attackPhase === 'active') {
+              ctx.strokeStyle = (this.weapon === 'kusarigama' ? 'rgba(56, 189, 248, 0.45)' : 'rgba(251, 191, 36, 0.45)');
+              ctx.lineWidth = 18;
+              ctx.beginPath();
+              ctx.arc(reachX - 20, reachY, (this.weapon === 'naginata' ? 85 : (this.weapon === 'kusarigama' ? 95 : 55)), -0.42, 0.42);
+              ctx.stroke();
+            }
+          }
+        } else if (this.state === 'blockstun') {
+          // Cross-arm block pose
+          ctx.moveTo(0, torsoTopY + 5);
+          ctx.lineTo(16, torsoTopY - 6);
+          ctx.lineTo(14, torsoTopY + 16);
+          ctx.stroke();
+        } else {
+          // Organic Guard Stance (Hands breathing in front of chest)
+          const handBreathe = breathe * 0.8;
+          ctx.moveTo(0, torsoTopY + 6);
+          ctx.lineTo(18, torsoTopY + 18 + handBreathe);
+          ctx.lineTo(24, torsoTopY + 6 + handBreathe);
+          ctx.stroke();
+
+          // Sheathed/Held Weapon at waist
+          if (this.weapon !== 'bare') {
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(24, torsoTopY + 6 + handBreathe);
+            ctx.lineTo(48, torsoTopY - 26);
+            ctx.stroke();
+          }
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // --- INITIALIZE FIGHTERS & MATCH ---
+    const p1 = new Fighter(360, 1, false, "Shadow Ronin");
+    const p2 = new Fighter(740, -1, true, "Shadow Bot");
+
+    let matchTimer = 99;
+    let timerInterval = setInterval(() => {
+      if (matchTimer > 0) {
+        matchTimer--;
+        document.getElementById('timer').innerText = matchTimer;
+      }
+    }, 1000);
+
+    let hitstopRemaining = 0;
+    function triggerHitstop(frames) {
+      hitstopRemaining = frames;
+    }
+
+    function updateHealthUI() {
+      const p1Pct = (p1.health / p1.maxHealth) * 100;
+      const p2Pct = (p2.health / p2.maxHealth) * 100;
+      document.getElementById('p1-fill').style.width = p1Pct + '%';
+      document.getElementById('p1-trail').style.width = p1Pct + '%';
+      document.getElementById('p2-fill').style.width = p2Pct + '%';
+      document.getElementById('p2-trail').style.width = p2Pct + '%';
+
+      const p1Shadow = document.getElementById('p1-shadow');
+      const p2Shadow = document.getElementById('p2-shadow');
+      if (p1Shadow) {
+        const p1ShPct = (p1.shadowEnergy / p1.maxShadowEnergy) * 100;
+        p1Shadow.style.width = p1ShPct + '%';
+        p1Shadow.style.boxShadow = p1.shadowEnergy >= 100 ? '0 0 12px #a855f7' : 'none';
+      }
+      if (p2Shadow) {
+        const p2ShPct = (p2.shadowEnergy / p2.maxShadowEnergy) * 100;
+        p2Shadow.style.width = p2ShPct + '%';
+        p2Shadow.style.boxShadow = p2.shadowEnergy >= 100 ? '0 0 12px #a855f7' : 'none';
+      }
+    }
+
+    function showCombo(name, count) {
+      const el = document.getElementById('combo-badge');
+      if (count >= 2) {
+        el.innerText = `${name.toUpperCase()}\n${count} HITS!`;
+        el.style.opacity = '1';
+        el.style.transform = 'scale(1.25)';
+        setTimeout(() => el.style.transform = 'scale(1.0)', 150);
+      } else {
+        el.style.opacity = '0';
+      }
+    }
+
+    function announce(txt, duration = 1600) {
+      const el = document.getElementById('announcement');
+      el.innerText = txt;
+      el.style.opacity = '1';
+      el.style.transform = 'translate(-50%, -50%) scale(1.15)';
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translate(-50%, -50%) scale(0.9)';
+      }, duration);
+    }
+
+    function onKnockout(winner) {
+      announce(`K.O.!\n${winner.name.toUpperCase()} WINS`, 3500);
+    }
+
+    function resetMatch() {
+      p1.health = p1.maxHealth; p1.x = 360; p1.state = 'idle'; p1.combo = 0; p1.shadowEnergy = 0;
+      p2.health = p2.maxHealth; p2.x = 740; p2.state = 'idle'; p2.combo = 0; p2.shadowEnergy = 0;
+      matchTimer = 99;
+      updateHealthUI();
+      announce("ROUND 1\nFIGHT!", 1800);
+    }
+
+    // --- GAME LOOP ---
+    announce("ROUND 1\nFIGHT!", 2000);
+
+    function loop() {
+      requestAnimationFrame(loop);
+
+      // Hitstop Impact Freeze
+      if (hitstopRemaining > 0) {
+        hitstopRemaining--;
+        return;
+      }
+
+      // 1. UPDATE
+      p1.update(p2);
+      p2.update(p1);
+
+      // Pushbox collision (cannot walk through each other)
+      const dist = Math.abs(p1.x - p2.x);
+      if (dist < 46) {
+        const overlap = (46 - dist) * 0.5;
+        if (p1.x < p2.x) { p1.x -= overlap; p2.x += overlap; }
+        else { p1.x += overlap; p2.x -= overlap; }
+      }
+
+      // Update particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx; p.y += p.vy;
+        p.life -= p.decay;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+      const stageCfg = STAGE_CONFIGS[currentStage];
+      for (const l of leaves) {
+        l.x += l.vx;
+        l.y += stageCfg.leafVy;
+        l.rot += l.vrot;
+        if (stageCfg.leafVy < 0) {
+          if (l.y < -10) { l.y = HEIGHT + 10; l.x = Math.random() * WIDTH; }
+        } else {
+          if (l.y > HEIGHT) { l.y = -10; l.x = Math.random() * WIDTH; }
+        }
+        if (l.x > WIDTH) l.x = 0;
+      }
+
+      // 2. RENDER PARALLAX BACKGROUND
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+      // Sky Gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, HEIGHT);
+      skyGrad.addColorStop(0, stageCfg.skyTop);
+      skyGrad.addColorStop(0.7, stageCfg.skyBot);
+      skyGrad.addColorStop(1, '#050408');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      // Celestial Moon / Sun
+      ctx.fillStyle = stageCfg.moon;
+      ctx.shadowColor = stageCfg.moon;
+      ctx.shadowBlur = 45;
+      ctx.beginPath();
+      ctx.arc(WIDTH * 0.5, 210, 85, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Distant Mountain Silhouettes
+      ctx.fillStyle = '#09060d';
+      ctx.beginPath();
+      ctx.moveTo(0, HEIGHT);
+      ctx.lineTo(0, 360);
+      ctx.lineTo(240, 260);
+      ctx.lineTo(480, 380);
+      ctx.lineTo(760, 240);
+      ctx.lineTo(WIDTH, 340);
+      ctx.lineTo(WIDTH, HEIGHT);
+      ctx.fill();
+
+      // Atmospheric Bamboo Silhouettes
+      ctx.fillStyle = '#050308';
+      const bambooStalks = [120, 180, 240, 820, 890, 960];
+      for (const bx of bambooStalks) {
+        ctx.fillRect(bx, 120, 16, HEIGHT);
+      }
+
+      // Ground Stage Floor
+      ctx.fillStyle = '#040306';
+      ctx.fillRect(0, GROUND_Y, WIDTH, HEIGHT - GROUND_Y);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y);
+      ctx.lineTo(WIDTH, GROUND_Y);
+      ctx.stroke();
+
+      // 3. RENDER ATMOSPHERIC LEAVES
+      ctx.fillStyle = stageCfg.leafCol;
+      for (const l of leaves) {
+        ctx.save();
+        ctx.translate(l.x, l.y);
+        ctx.rotate(l.rot);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, l.size, l.size * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 4. RENDER FIGHTERS
+      p1.draw();
+      p2.draw();
+
+      // 5. RENDER HIT PARTICLES
+      for (const p of particles) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+
+      // 6. RENDER FLOATING DAMAGE NUMBERS
+      for (let i = floatingNumbers.length - 1; i >= 0; i--) {
+        const fn = floatingNumbers[i];
+        fn.y += fn.vy;
+        fn.life -= 0.022;
+        if (fn.life <= 0) {
+          floatingNumbers.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.font = 'bold 18px Impact, sans-serif';
+        ctx.fillStyle = fn.color;
+        ctx.globalAlpha = Math.min(1.0, fn.life * 1.6);
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 6;
+        ctx.textAlign = 'center';
+        ctx.fillText(fn.text, fn.x, fn.y);
+        ctx.restore();
+      }
+    }
+
+    loop();
+  </script>
+</body>
+</html>
